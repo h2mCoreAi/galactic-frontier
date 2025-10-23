@@ -13,6 +13,15 @@ This roadmap outlines the development phases for the Galactic Frontier single-pl
 ## Phase 1: Core Game Mechanics Enhancement
 **Goal**: Transform prototype into configurable, feature-complete game foundation
 
+### 1.0 Development Environment Setup
+- **Milestone**: Modern development server with hot reload capabilities
+- **Deliverables**:
+  - Vite development server with Hot Module Replacement (HMR)
+  - API proxy configuration for backend communication
+  - Development tooling integration (source maps, error overlays)
+  - Production build system preparation
+  - Development environment testing and validation
+
 ### 1.1 Configuration System Integration
 - **Milestone**: Implement config.json loading system
 - **Deliverables**:
@@ -232,7 +241,7 @@ This roadmap outlines the development phases for the Galactic Frontier single-pl
 ### 6.4 Production Deployment
 - **Milestone**: Live game deployment
 - **Deliverables**:
-  - Optimized build process
+  - Production build validation (Vite build from Phase 1)
   - CDN asset hosting setup
   - Monitoring and logging
   - Backup and recovery procedures
