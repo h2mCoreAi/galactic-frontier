@@ -324,13 +324,50 @@
             ctx.font = '24px Arial';
             ctx.fillText('Press P to Resume', canvas.width / 2, canvas.height / 2 + 20);
 
-            // Game stats (still visible during pause)
-            ctx.font = '16px Arial';
-            ctx.textAlign = 'left';
-            ctx.fillText(`Level: ${currentLevel}`, 10, 60);
-            ctx.fillText(`Score: ${score}/${scoreToLevelUp}`, 10, 80);
-            ctx.fillText(`Health: ${ship.currentHealth.toFixed(0)}/${config.ship.maxHealth}`, 10, 100);
-            ctx.fillText(`Afterburner: ${ship.afterburnerEnergy.toFixed(0)}/${config.ship.afterburnerMax}`, 10, 120);
+            // Game stats (in arcade style layout)
+            ctx.font = '20px Arial';
+            ctx.fillText(`LEVEL ${currentLevel}     SCORE ${score}/${scoreToLevelUp}`, canvas.width / 2, canvas.height / 2 + 70);
+
+            // Health and Afterburner bars
+            const barWidth = 120;
+            const barHeight = 14;
+            const barY = canvas.height / 2 + 90;
+
+            // Health bar (left)
+            const healthPercent = ship.currentHealth / config.ship.maxHealth;
+            const healthBarX = canvas.width / 2 - barWidth - 20;
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.fillRect(healthBarX, barY, barWidth, barHeight);
+
+            let healthColor = healthPercent > 0.6 ? '#00ff00' : healthPercent > 0.3 ? '#ffff00' : '#ff0000';
+            ctx.fillStyle = healthColor;
+            ctx.fillRect(healthBarX, barY, barWidth * healthPercent, barHeight);
+
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(healthBarX, barY, barWidth, barHeight);
+
+            // Afterburner bar (right)
+            const energyPercent = ship.afterburnerEnergy / config.ship.afterburnerMax;
+            const energyBarX = canvas.width / 2 + 20;
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.fillRect(energyBarX, barY, barWidth, barHeight);
+
+            let energyColor = energyPercent > 0.6 ? '#ffffff' : energyPercent > 0.3 ? '#00ffff' : '#0000ff';
+            ctx.fillStyle = energyColor;
+            ctx.fillRect(energyBarX, barY, barWidth * energyPercent, barHeight);
+
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(energyBarX, barY, barWidth, barHeight);
+
+            // Stats at bottom
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = 'white';
+            ctx.fillText(`SHOTS: ${bulletsFired}     ACCURACY: ${bulletsFired > 0 ? ((bulletsHit / bulletsFired) * 100).toFixed(1) : 0}%`, canvas.width / 2, canvas.height / 2 + 130);
         }
 
         function spawnEnemy() {
@@ -639,72 +676,73 @@
 
             // Draw scoreboard and UI (only during gameplay)
             if (gameState === GAME_STATES.PLAYING) {
+                // Top HUD - Score and Level centered
                 ctx.fillStyle = 'white';
-                ctx.font = '16px Arial';
-                ctx.textAlign = 'left';
-                ctx.fillText('Controls: Mouse Move (Rotate), W (Thrust), Space (Afterburner), Right Click (Shoot), P (Pause)', 10, 20);
-                ctx.fillText('Click canvas to focus', 10, 40);
-                ctx.fillText(`Level: ${currentLevel}`, 10, 60);
-                ctx.fillText(`Score: ${score}/${scoreToLevelUp}`, 10, 80);
-                // Health bar
+                ctx.font = '20px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(`LEVEL ${currentLevel}     SCORE ${score}/${scoreToLevelUp}`, canvas.width / 2, 25);
+
+                // Top bars - Health and Afterburner side by side
+                const barWidth = 150;
+                const barHeight = 16;
+                const barY = 40;
+
+                // Health bar (left side)
                 const healthPercent = ship.currentHealth / config.ship.maxHealth;
-                const barWidth = 200;
-                const barHeight = 20;
-                const barX = 10;
-                const barY = 100;
+                const healthBarX = 10;
 
-                // Health bar background
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-                ctx.fillRect(barX, barY, barWidth, barHeight);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.fillRect(healthBarX, barY, barWidth, barHeight);
 
-                // Health bar fill with color coding
                 let healthColor;
                 if (healthPercent > 0.6) healthColor = '#00ff00'; // Green
                 else if (healthPercent > 0.3) healthColor = '#ffff00'; // Yellow
                 else healthColor = '#ff0000'; // Red
 
                 ctx.fillStyle = healthColor;
-                ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
+                ctx.fillRect(healthBarX, barY, barWidth * healthPercent, barHeight);
 
-                // Health bar border
                 ctx.strokeStyle = 'white';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(barX, barY, barWidth, barHeight);
+                ctx.lineWidth = 1;
+                ctx.strokeRect(healthBarX, barY, barWidth, barHeight);
 
-                // Health text
+                // Health label
                 ctx.fillStyle = 'white';
-                ctx.font = '14px Arial';
-                ctx.fillText(`Health: ${ship.currentHealth.toFixed(0)}/${config.ship.maxHealth}`, barX, barY - 5);
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText(`HEALTH ${ship.currentHealth.toFixed(0)}/${config.ship.maxHealth}`, healthBarX, barY - 3);
 
-                // Afterburner bar
+                // Afterburner bar (right side)
                 const energyPercent = ship.afterburnerEnergy / config.ship.afterburnerMax;
-                const energyBarY = barY + 30;
+                const energyBarX = canvas.width - barWidth - 10;
 
-                // Afterburner bar background
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-                ctx.fillRect(barX, energyBarY, barWidth, barHeight);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.fillRect(energyBarX, barY, barWidth, barHeight);
 
-                // Afterburner bar fill with color coding
                 let energyColor;
                 if (energyPercent > 0.6) energyColor = '#ffffff'; // White
                 else if (energyPercent > 0.3) energyColor = '#00ffff'; // Cyan
                 else energyColor = '#0000ff'; // Blue
 
                 ctx.fillStyle = energyColor;
-                ctx.fillRect(barX, energyBarY, barWidth * energyPercent, barHeight);
+                ctx.fillRect(energyBarX, barY, barWidth * energyPercent, barHeight);
 
-                // Afterburner bar border
                 ctx.strokeStyle = 'white';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(barX, energyBarY, barWidth, barHeight);
+                ctx.lineWidth = 1;
+                ctx.strokeRect(energyBarX, barY, barWidth, barHeight);
 
-                // Afterburner text
+                // Afterburner label
+                ctx.fillStyle = 'white';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'right';
+                ctx.fillText(`AFTERBURNER ${ship.afterburnerEnergy.toFixed(0)}/${config.ship.afterburnerMax}`, energyBarX + barWidth, barY - 3);
+
+                // Bottom stats
                 ctx.fillStyle = 'white';
                 ctx.font = '14px Arial';
-                ctx.fillText(`Afterburner: ${ship.afterburnerEnergy.toFixed(0)}/${config.ship.afterburnerMax}`, barX, energyBarY - 5);
-
-                ctx.fillText(`Bullets Fired: ${bulletsFired}`, 10, energyBarY + 50);
-                ctx.fillText(`Hit %: ${bulletsFired > 0 ? ((bulletsHit / bulletsFired) * 100).toFixed(1) : 0}%`, 10, energyBarY + 70);
+                ctx.textAlign = 'left';
+                ctx.fillText(`SHOTS: ${bulletsFired}`, 10, canvas.height - 30);
+                ctx.fillText(`ACCURACY: ${bulletsFired > 0 ? ((bulletsHit / bulletsFired) * 100).toFixed(1) : 0}%`, 10, canvas.height - 10);
             }
 
             // Game over
