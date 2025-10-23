@@ -117,6 +117,7 @@
         const GAME_STATES = {
             START: 'start',
             PLAYING: 'playing',
+            PAUSED: 'paused',
             GAME_OVER: 'gameOver'
         };
         let gameState = GAME_STATES.START;
@@ -191,11 +192,15 @@
                 if (e.key === ' ' || e.key === 'Enter') {
                     startGame();
                 }
-            } else if (gameState === GAME_STATES.PLAYING) {
-                if (e.key === 'w' || e.key === 'W') thrustPressed = true;
-                if (e.key === ' ') {
-                    e.preventDefault(); // Prevent page scroll
-                    afterburnerPressed = true;
+            } else if (gameState === GAME_STATES.PLAYING || gameState === GAME_STATES.PAUSED) {
+                if (e.key === 'p' || e.key === 'P') {
+                    togglePause();
+                } else if (gameState === GAME_STATES.PLAYING) {
+                    if (e.key === 'w' || e.key === 'W') thrustPressed = true;
+                    if (e.key === ' ') {
+                        e.preventDefault(); // Prevent page scroll
+                        afterburnerPressed = true;
+                    }
                 }
             } else if (gameState === GAME_STATES.GAME_OVER) {
                 if (e.key === 'r' || e.key === 'R') {
@@ -250,6 +255,14 @@
             gameState = GAME_STATES.GAME_OVER;
         }
 
+        function togglePause() {
+            if (gameState === GAME_STATES.PLAYING) {
+                gameState = GAME_STATES.PAUSED;
+            } else if (gameState === GAME_STATES.PAUSED) {
+                gameState = GAME_STATES.PLAYING;
+            }
+        }
+
         function drawStartScreen() {
             ctx.fillStyle = 'black';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -280,6 +293,7 @@
             ctx.fillText('W - Thrust Forward', canvas.width / 2, canvas.height / 2 + 10);
             ctx.fillText('Spacebar - Afterburner (Limited Energy)', canvas.width / 2, canvas.height / 2 + 30);
             ctx.fillText('Right Mouse Button - Shoot', canvas.width / 2, canvas.height / 2 + 50);
+            ctx.fillText('P - Pause/Resume', canvas.width / 2, canvas.height / 2 + 70);
 
             // Start prompt
             ctx.font = '24px Arial';
@@ -293,6 +307,30 @@
             ctx.fillText('Phase 1: Core Game Mechanics', 10, canvas.height - 20);
             ctx.textAlign = 'right';
             ctx.fillText('Configuration Loaded', canvas.width - 10, canvas.height - 20);
+        }
+
+        function drawPauseScreen() {
+            // Semi-transparent overlay
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Pause text
+            ctx.fillStyle = 'white';
+            ctx.font = '48px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2 - 50);
+
+            // Instructions
+            ctx.font = '24px Arial';
+            ctx.fillText('Press P to Resume', canvas.width / 2, canvas.height / 2 + 20);
+
+            // Game stats (still visible during pause)
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Level: ${currentLevel}`, 10, 60);
+            ctx.fillText(`Score: ${score}/${scoreToLevelUp}`, 10, 80);
+            ctx.fillText(`Health: ${ship.currentHealth.toFixed(0)}/${config.ship.maxHealth}`, 10, 100);
+            ctx.fillText(`Afterburner: ${ship.afterburnerEnergy.toFixed(0)}/${config.ship.afterburnerMax}`, 10, 120);
         }
 
         function spawnEnemy() {
@@ -483,6 +521,17 @@
             ctx.fillStyle = 'black';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+            // Draw game world
+            drawGame();
+
+            // Draw pause overlay if paused
+            if (gameState === GAME_STATES.PAUSED) {
+                drawPauseScreen();
+            }
+        }
+
+        function drawGame() {
+
             // Draw stars
             ctx.fillStyle = 'white';
             stars.forEach(star => {
@@ -593,7 +642,7 @@
                 ctx.fillStyle = 'white';
                 ctx.font = '16px Arial';
                 ctx.textAlign = 'left';
-                ctx.fillText('Controls: Mouse Move (Rotate), W (Thrust), Space (Afterburner), Right Click (Shoot)', 10, 20);
+                ctx.fillText('Controls: Mouse Move (Rotate), W (Thrust), Space (Afterburner), Right Click (Shoot), P (Pause)', 10, 20);
                 ctx.fillText('Click canvas to focus', 10, 40);
                 ctx.fillText(`Level: ${currentLevel}`, 10, 60);
                 ctx.fillText(`Score: ${score}/${scoreToLevelUp}`, 10, 80);
