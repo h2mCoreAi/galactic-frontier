@@ -113,11 +113,18 @@
         // Explosions
         const explosions = [];
 
+        // Game states
+        const GAME_STATES = {
+            START: 'start',
+            PLAYING: 'playing',
+            GAME_OVER: 'gameOver'
+        };
+        let gameState = GAME_STATES.START;
+
         // Scoreboard and levels
         let score = 0;
         let bulletsFired = 0;
         let bulletsHit = 0;
-        let gameOver = false;
         let currentLevel = 1;
         let scoreToLevelUp = 500; // Will be replaced with config value
 
@@ -162,14 +169,14 @@
         });
 
         canvas.addEventListener('mousedown', (e) => {
-            if (e.button === 2) { // Right mouse button
+            if (gameState === GAME_STATES.PLAYING && e.button === 2) { // Right mouse button
                 e.preventDefault(); // Prevent context menu
                 rightMousePressed = true;
             }
         });
 
         canvas.addEventListener('mouseup', (e) => {
-            if (e.button === 2) { // Right mouse button
+            if (gameState === GAME_STATES.PLAYING && e.button === 2) { // Right mouse button
                 rightMousePressed = false;
             }
         });
@@ -180,17 +187,28 @@
         });
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'w' || e.key === 'W') thrustPressed = true;
-            if (e.key === ' ') {
-                e.preventDefault(); // Prevent page scroll
-                afterburnerPressed = true;
+            if (gameState === GAME_STATES.START) {
+                if (e.key === ' ' || e.key === 'Enter') {
+                    startGame();
+                }
+            } else if (gameState === GAME_STATES.PLAYING) {
+                if (e.key === 'w' || e.key === 'W') thrustPressed = true;
+                if (e.key === ' ') {
+                    e.preventDefault(); // Prevent page scroll
+                    afterburnerPressed = true;
+                }
+            } else if (gameState === GAME_STATES.GAME_OVER) {
+                if (e.key === 'r' || e.key === 'R') {
+                    gameState = GAME_STATES.START;
+                }
             }
-            if (e.key === 'r' && gameOver) resetGame();
         });
 
         document.addEventListener('keyup', (e) => {
-            if (e.key === 'w' || e.key === 'W') thrustPressed = false;
-            if (e.key === ' ') afterburnerPressed = false;
+            if (gameState === GAME_STATES.PLAYING) {
+                if (e.key === 'w' || e.key === 'W') thrustPressed = false;
+                if (e.key === ' ') afterburnerPressed = false;
+            }
         });
 
         // Stars
@@ -201,6 +219,11 @@
                 universeY: (Math.random() - 0.5) * 8000,
                 size: Math.random() * 2 + 1
             });
+        }
+
+        function startGame() {
+            gameState = GAME_STATES.PLAYING;
+            resetGame();
         }
 
         function resetGame() {
@@ -220,7 +243,56 @@
             spawnTimer = 0;
             nextSpawn = Math.random() * (maxSpawnInterval - minSpawnInterval) + minSpawnInterval;
             currentLevel = 1;
-            gameOver = false;
+            gameState = GAME_STATES.PLAYING;
+        }
+
+        function endGame() {
+            gameState = GAME_STATES.GAME_OVER;
+        }
+
+        function drawStartScreen() {
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw stars
+            ctx.fillStyle = 'white';
+            stars.forEach(star => {
+                const screenX = star.universeX - universeX + canvas.width / 2;
+                const screenY = star.universeY - universeY + canvas.height / 2;
+                if (screenX >= 0 && screenX <= canvas.width && screenY >= 0 && screenY <= canvas.height) {
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, star.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            // Title
+            ctx.fillStyle = 'white';
+            ctx.font = '48px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('GALACTIC FRONTIER', canvas.width / 2, canvas.height / 2 - 100);
+
+            // Instructions
+            ctx.font = '20px Arial';
+            ctx.fillText('Controls:', canvas.width / 2, canvas.height / 2 - 40);
+            ctx.font = '16px Arial';
+            ctx.fillText('Mouse Movement - Rotate Ship', canvas.width / 2, canvas.height / 2 - 10);
+            ctx.fillText('W - Thrust Forward', canvas.width / 2, canvas.height / 2 + 10);
+            ctx.fillText('Spacebar - Afterburner (Limited Energy)', canvas.width / 2, canvas.height / 2 + 30);
+            ctx.fillText('Right Mouse Button - Shoot', canvas.width / 2, canvas.height / 2 + 50);
+
+            // Start prompt
+            ctx.font = '24px Arial';
+            ctx.fillStyle = '#00ff00';
+            ctx.fillText('Press SPACEBAR or ENTER to Start', canvas.width / 2, canvas.height / 2 + 100);
+
+            // Version/Config info
+            ctx.font = '12px Arial';
+            ctx.fillStyle = 'gray';
+            ctx.textAlign = 'left';
+            ctx.fillText('Phase 1: Core Game Mechanics', 10, canvas.height - 20);
+            ctx.textAlign = 'right';
+            ctx.fillText('Configuration Loaded', canvas.width - 10, canvas.height - 20);
         }
 
         function spawnEnemy() {
@@ -249,7 +321,7 @@
         }
 
         function updateShip() {
-            if (gameOver || !configLoaded) return;
+            if (gameState !== GAME_STATES.PLAYING || !configLoaded) return;
 
             ship.angle = Math.atan2(mouseY - ship.y, mouseX - ship.x);
 
@@ -287,7 +359,7 @@
         }
 
         function updateProjectiles() {
-            if (gameOver || !configLoaded) return;
+            if (gameState !== GAME_STATES.PLAYING || !configLoaded) return;
 
             // Player projectiles
             for (let i = projectiles.length - 1; i >= 0; i--) {
@@ -341,13 +413,13 @@
                 if (dist < ship.size) {
                     ship.currentHealth = Math.max(0, ship.currentHealth - p.damage);
                     enemyProjectiles.splice(i, 1);
-                    if (ship.currentHealth <= 0) gameOver = true;
+                    if (ship.currentHealth <= 0) endGame();
                 }
             }
         }
 
         function updateEnemies() {
-            if (gameOver || !configLoaded) return;
+            if (gameState !== GAME_STATES.PLAYING || !configLoaded) return;
 
             spawnTimer++;
             if (spawnTimer >= nextSpawn) {
@@ -386,13 +458,13 @@
                     });
                     ship.currentHealth = Math.max(0, ship.currentHealth - e.collisionDamage);
                     enemies.splice(i, 1);
-                    if (ship.currentHealth <= 0) gameOver = true;
+                    if (ship.currentHealth <= 0) endGame();
                 }
             }
         }
 
         function updateExplosions() {
-            if (gameOver || !configLoaded) return;
+            if (gameState !== GAME_STATES.PLAYING || !configLoaded) return;
 
             for (let i = explosions.length - 1; i >= 0; i--) {
                 const exp = explosions[i];
@@ -403,6 +475,11 @@
         }
 
         function draw() {
+            if (gameState === GAME_STATES.START) {
+                drawStartScreen();
+                return;
+            }
+
             ctx.fillStyle = 'black';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -580,22 +657,24 @@
             ctx.fillText(`Hit %: ${bulletsFired > 0 ? ((bulletsHit / bulletsFired) * 100).toFixed(1) : 0}%`, 10, energyBarY + 70);
 
             // Game over
-            if (gameOver) {
+            if (gameState === GAME_STATES.GAME_OVER) {
                 ctx.fillStyle = 'red';
                 ctx.font = '40px Arial';
                 ctx.textAlign = 'center';
                 ctx.fillText('Game Over', canvas.width / 2, canvas.height / 2);
                 ctx.font = '20px Arial';
                 ctx.fillText(`Final Score: ${score} (Level ${currentLevel})`, canvas.width / 2, canvas.height / 2 + 40);
-                ctx.fillText('Press R to Start Over', canvas.width / 2, canvas.height / 2 + 80);
+                ctx.fillText('Press R to Return to Main Menu', canvas.width / 2, canvas.height / 2 + 80);
             }
         }
 
         function gameLoop() {
-            updateShip();
-            updateProjectiles();
-            updateEnemies();
-            updateExplosions();
+            if (gameState === GAME_STATES.PLAYING) {
+                updateShip();
+                updateProjectiles();
+                updateEnemies();
+                updateExplosions();
+            }
             draw();
             requestAnimationFrame(gameLoop);
         }
@@ -607,7 +686,7 @@
         async function initGame() {
             await loadConfig();
             applyConfig();
-            gameLoop();
+            gameLoop(); // Start the render loop, but game stays in START state
         }
 
         initGame();
