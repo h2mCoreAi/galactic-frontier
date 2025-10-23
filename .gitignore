@@ -299,6 +299,7 @@ keys/
 # Documentation builds
 docs/build/
 docs/.vuepress/dist/
+docs/
 
 # Migration files (if not using version control for them)
 # Uncomment if you want to ignore migrations
