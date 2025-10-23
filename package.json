@@ -1,0 +1,30 @@
+{
+  "name": "galactic-frontier",
+  "version": "1.0.0",
+  "description": "A space exploration game built with modern web technologies.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "pm2:dev:start": "pm2 start ecosystem.dev.config.js",
+    "pm2:dev:restart": "pm2 restart ecosystem.dev.config.js",
+    "pm2:dev:stop": "pm2 stop ecosystem.dev.config.js",
+    "pm2:dev:logs": "pm2 logs"
+  },
+  "keywords": ["game", "space", "phaser", "vite"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^5.0.0"
+  },
+  "dependencies": {
+    "phaser": "^3.70.0"
+  }
+}

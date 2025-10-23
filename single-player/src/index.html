@@ -15,16 +15,78 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
+        // Global config variable
+        let config = null;
+        let configLoaded = false;
+
+        // Config loading function
+        async function loadConfig() {
+            try {
+                console.log('Loading game configuration...');
+                const response = await fetch('/config/config.json');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                config = await response.json();
+                console.log('Configuration loaded successfully:', config);
+                configLoaded = true;
+                return config;
+            } catch (error) {
+                console.error('Failed to load configuration:', error);
+                // Provide fallback defaults
+                config = {
+                    ship: {
+                        maxSpeed: 5,
+                        thrust: 0.1,
+                        afterburnerBoost: 2,
+                        afterburnerMax: 100,
+                        afterburnerDepleteRate: 5,
+                        afterburnerRegenRate: 1,
+                        maxHealth: 100,
+                        size: 20
+                    },
+                    projectiles: {
+                        speed: 7,
+                        life: 100,
+                        fanShotCount: 10,
+                        fanShotAngle: 0.1047,
+                        cooldown: 10
+                    },
+                    enemies: [
+                        { type: 'small', size: 10, speed: 3, points: 10, shootInterval: 120, projectileDamage: 1.25, collisionDamage: 3.75 },
+                        { type: 'medium', size: 15, speed: 2, points: 20, shootInterval: 90, projectileDamage: 2.5, collisionDamage: 7.5 },
+                        { type: 'large', size: 25, speed: 1, points: 50, shootInterval: 60, projectileDamage: 5, collisionDamage: 12.5 }
+                    ],
+                    game: {
+                        scoreToLevelUp: 250,
+                        minSpawnInterval: 60,
+                        maxSpawnInterval: 300,
+                        minHealthSpawnInterval: 300,
+                        maxHealthSpawnInterval: 600,
+                        minFanShotSpawnInterval: 600,
+                        maxFanShotSpawnInterval: 1200,
+                        healthPowerUpValue: 10,
+                        fanShotDuration: 600
+                    }
+                };
+                console.warn('Using fallback configuration');
+                configLoaded = true;
+                return config;
+            }
+        }
+
         // Player ship
         const ship = {
             x: canvas.width / 2,
             y: canvas.height / 2,
             angle: 0,
             speed: 0,
-            maxSpeed: 5,
-            thrust: 0.1,
-            size: 20,
-            health: 100
+            maxSpeed: 5, // Will be replaced with config value
+            thrust: 0.1, // Will be replaced with config value
+            size: 20, // Will be replaced with config value
+            currentHealth: 100, // Will be replaced with config value
+            afterburnerEnergy: 100, // Will be replaced with config value
+            lastShot: 0
         };
 
         // Universe coordinates
@@ -33,8 +95,9 @@
 
         // Projectiles (player)
         const projectiles = [];
-        const projectileSpeed = 7;
-        const projectileLife = 100;
+        let projectileSpeed = 7; // Will be replaced with config value
+        let projectileLife = 100; // Will be replaced with config value
+        let projectileCooldown = 10; // Will be replaced with config value
 
         // Enemy projectiles
         const enemyProjectiles = [];
@@ -42,9 +105,10 @@
         // Enemies
         const enemies = [];
         let spawnTimer = 0;
-        const minSpawnInterval = 60;
-        const maxSpawnInterval = 300;
+        let minSpawnInterval = 60; // Will be replaced with config value
+        let maxSpawnInterval = 300; // Will be replaced with config value
         let nextSpawn = Math.random() * (maxSpawnInterval - minSpawnInterval) + minSpawnInterval;
+        let baseEnemyTypes = []; // Will be loaded from config
 
         // Explosions
         const explosions = [];
@@ -55,20 +119,41 @@
         let bulletsHit = 0;
         let gameOver = false;
         let currentLevel = 1;
-        const scoreToLevelUp = 500;
+        let scoreToLevelUp = 500; // Will be replaced with config value
 
-        // Base enemy types (damage will be scaled by level)
-        const baseEnemyTypes = [
-            { type: 'small', size: 10, speed: 3, points: 10, shootInterval: 120, projectileDamage: 1.25, collisionDamage: 3.75 },
-            { type: 'medium', size: 15, speed: 2, points: 20, shootInterval: 90, projectileDamage: 2.5, collisionDamage: 7.5 },
-            { type: 'large', size: 25, speed: 1, points: 50, shootInterval: 60, projectileDamage: 5, collisionDamage: 12.5 }
-        ];
+        // Apply config values to game variables
+        function applyConfig() {
+            if (!config) return;
 
-        // Mouse controls
+            // Ship configuration
+            ship.maxSpeed = config.ship.maxSpeed;
+            ship.thrust = config.ship.thrust;
+            ship.size = config.ship.size;
+            ship.currentHealth = config.ship.maxHealth;
+            ship.afterburnerEnergy = config.ship.afterburnerMax;
+
+            // Projectile configuration
+            projectileSpeed = config.projectiles.speed;
+            projectileLife = config.projectiles.life;
+            projectileCooldown = config.projectiles.cooldown;
+
+            // Enemy configuration
+            baseEnemyTypes = config.enemies;
+
+            // Game configuration
+            scoreToLevelUp = config.game.scoreToLevelUp;
+            minSpawnInterval = config.game.minSpawnInterval;
+            maxSpawnInterval = config.game.maxSpawnInterval;
+
+            console.log('Configuration applied to game variables');
+        }
+
+        // Control state variables
         let mouseX = canvas.width / 2;
         let mouseY = canvas.height / 2;
-        let mousePressed = false;
-        let spacePressed = false;
+        let thrustPressed = false;
+        let afterburnerPressed = false;
+        let rightMousePressed = false;
 
         canvas.addEventListener('mousemove', (e) => {
             const rect = canvas.getBoundingClientRect();
@@ -77,20 +162,35 @@
         });
 
         canvas.addEventListener('mousedown', (e) => {
-            if (e.button === 0) mousePressed = true;
+            if (e.button === 2) { // Right mouse button
+                e.preventDefault(); // Prevent context menu
+                rightMousePressed = true;
+            }
         });
 
         canvas.addEventListener('mouseup', (e) => {
-            if (e.button === 0) mousePressed = false;
+            if (e.button === 2) { // Right mouse button
+                rightMousePressed = false;
+            }
+        });
+
+        // Prevent context menu on right click
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
         });
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === ' ') spacePressed = true;
+            if (e.key === 'w' || e.key === 'W') thrustPressed = true;
+            if (e.key === ' ') {
+                e.preventDefault(); // Prevent page scroll
+                afterburnerPressed = true;
+            }
             if (e.key === 'r' && gameOver) resetGame();
         });
 
         document.addEventListener('keyup', (e) => {
-            if (e.key === ' ') spacePressed = false;
+            if (e.key === 'w' || e.key === 'W') thrustPressed = false;
+            if (e.key === ' ') afterburnerPressed = false;
         });
 
         // Stars
@@ -104,7 +204,8 @@
         }
 
         function resetGame() {
-            ship.health = 100;
+            ship.currentHealth = config ? config.ship.maxHealth : 100;
+            ship.afterburnerEnergy = config ? config.ship.afterburnerMax : 100;
             ship.speed = 0;
             ship.angle = 0;
             universeX = 0;
@@ -148,19 +249,31 @@
         }
 
         function updateShip() {
-            if (gameOver) return;
+            if (gameOver || !configLoaded) return;
 
             ship.angle = Math.atan2(mouseY - ship.y, mouseX - ship.x);
-            if (mousePressed) {
+
+            // Handle thrust (W key)
+            if (thrustPressed) {
                 ship.speed = Math.min(ship.speed + ship.thrust, ship.maxSpeed);
             } else {
                 ship.speed = Math.max(ship.speed - ship.thrust / 2, 0);
             }
 
-            universeX += Math.cos(ship.angle) * ship.speed;
-            universeY += Math.sin(ship.angle) * ship.speed;
+            // Handle afterburner (spacebar) - only if energy available
+            let effectiveSpeed = ship.speed;
+            if (afterburnerPressed && ship.afterburnerEnergy > 0) {
+                effectiveSpeed *= config.ship.afterburnerBoost;
+                ship.afterburnerEnergy = Math.max(0, ship.afterburnerEnergy - config.ship.afterburnerDepleteRate);
+            } else if (ship.afterburnerEnergy < config.ship.afterburnerMax) {
+                ship.afterburnerEnergy = Math.min(config.ship.afterburnerMax, ship.afterburnerEnergy + config.ship.afterburnerRegenRate);
+            }
 
-            if (spacePressed && !ship.lastShot) {
+            universeX += Math.cos(ship.angle) * effectiveSpeed;
+            universeY += Math.sin(ship.angle) * effectiveSpeed;
+
+            // Handle shooting (right mouse button)
+            if (rightMousePressed && ship.lastShot <= 0) {
                 projectiles.push({
                     universeX: universeX,
                     universeY: universeY,
@@ -168,13 +281,13 @@
                     life: projectileLife
                 });
                 bulletsFired++;
-                ship.lastShot = 10;
+                ship.lastShot = projectileCooldown;
             }
-            if (ship.lastShot) ship.lastShot = Math.max(0, ship.lastShot - 1);
+            if (ship.lastShot > 0) ship.lastShot--;
         }
 
         function updateProjectiles() {
-            if (gameOver) return;
+            if (gameOver || !configLoaded) return;
 
             // Player projectiles
             for (let i = projectiles.length - 1; i >= 0; i--) {
@@ -226,15 +339,15 @@
 
                 const dist = Math.hypot(p.universeX - universeX, p.universeY - universeY);
                 if (dist < ship.size) {
-                    ship.health = Math.max(0, ship.health - p.damage);
+                    ship.currentHealth = Math.max(0, ship.currentHealth - p.damage);
                     enemyProjectiles.splice(i, 1);
-                    if (ship.health <= 0) gameOver = true;
+                    if (ship.currentHealth <= 0) gameOver = true;
                 }
             }
         }
 
         function updateEnemies() {
-            if (gameOver) return;
+            if (gameOver || !configLoaded) return;
 
             spawnTimer++;
             if (spawnTimer >= nextSpawn) {
@@ -271,15 +384,15 @@
                         radius: 0,
                         life: 20
                     });
-                    ship.health = Math.max(0, ship.health - e.collisionDamage);
+                    ship.currentHealth = Math.max(0, ship.currentHealth - e.collisionDamage);
                     enemies.splice(i, 1);
-                    if (ship.health <= 0) gameOver = true;
+                    if (ship.currentHealth <= 0) gameOver = true;
                 }
             }
         }
 
         function updateExplosions() {
-            if (gameOver) return;
+            if (gameOver || !configLoaded) return;
 
             for (let i = explosions.length - 1; i >= 0; i--) {
                 const exp = explosions[i];
@@ -402,13 +515,69 @@
             ctx.fillStyle = 'white';
             ctx.font = '16px Arial';
             ctx.textAlign = 'left';
-            ctx.fillText('Controls: Mouse Move (Rotate), Left Click (Thrust), Space (Shoot)', 10, 20);
+            ctx.fillText('Controls: Mouse Move (Rotate), W (Thrust), Space (Afterburner), Right Click (Shoot)', 10, 20);
             ctx.fillText('Click canvas to focus', 10, 40);
             ctx.fillText(`Level: ${currentLevel}`, 10, 60);
             ctx.fillText(`Score: ${score}/${scoreToLevelUp}`, 10, 80);
-            ctx.fillText(`Health: ${ship.health.toFixed(0)}`, 10, 100);
-            ctx.fillText(`Bullets Fired: ${bulletsFired}`, 10, 120);
-            ctx.fillText(`Hit %: ${bulletsFired > 0 ? ((bulletsHit / bulletsFired) * 100).toFixed(1) : 0}%`, 10, 140);
+            // Health bar
+            const healthPercent = ship.currentHealth / config.ship.maxHealth;
+            const barWidth = 200;
+            const barHeight = 20;
+            const barX = 10;
+            const barY = 100;
+
+            // Health bar background
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.fillRect(barX, barY, barWidth, barHeight);
+
+            // Health bar fill with color coding
+            let healthColor;
+            if (healthPercent > 0.6) healthColor = '#00ff00'; // Green
+            else if (healthPercent > 0.3) healthColor = '#ffff00'; // Yellow
+            else healthColor = '#ff0000'; // Red
+
+            ctx.fillStyle = healthColor;
+            ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
+
+            // Health bar border
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+            // Health text
+            ctx.fillStyle = 'white';
+            ctx.font = '14px Arial';
+            ctx.fillText(`Health: ${ship.currentHealth.toFixed(0)}/${config.ship.maxHealth}`, barX, barY - 5);
+
+            // Afterburner bar
+            const energyPercent = ship.afterburnerEnergy / config.ship.afterburnerMax;
+            const energyBarY = barY + 30;
+
+            // Afterburner bar background
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.fillRect(barX, energyBarY, barWidth, barHeight);
+
+            // Afterburner bar fill with color coding
+            let energyColor;
+            if (energyPercent > 0.6) energyColor = '#ffffff'; // White
+            else if (energyPercent > 0.3) energyColor = '#00ffff'; // Cyan
+            else energyColor = '#0000ff'; // Blue
+
+            ctx.fillStyle = energyColor;
+            ctx.fillRect(barX, energyBarY, barWidth * energyPercent, barHeight);
+
+            // Afterburner bar border
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(barX, energyBarY, barWidth, barHeight);
+
+            // Afterburner text
+            ctx.fillStyle = 'white';
+            ctx.font = '14px Arial';
+            ctx.fillText(`Afterburner: ${ship.afterburnerEnergy.toFixed(0)}/${config.ship.afterburnerMax}`, barX, energyBarY - 5);
+
+            ctx.fillText(`Bullets Fired: ${bulletsFired}`, 10, energyBarY + 50);
+            ctx.fillText(`Hit %: ${bulletsFired > 0 ? ((bulletsHit / bulletsFired) * 100).toFixed(1) : 0}%`, 10, energyBarY + 70);
 
             // Game over
             if (gameOver) {
@@ -433,7 +602,15 @@
 
         canvas.addEventListener('click', () => canvas.focus());
         canvas.tabIndex = 1;
-        gameLoop();
+
+        // Initialize game with config loading
+        async function initGame() {
+            await loadConfig();
+            applyConfig();
+            gameLoop();
+        }
+
+        initGame();
     </script>
 </body>
 </html>
