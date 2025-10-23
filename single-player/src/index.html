@@ -561,7 +561,7 @@
             });
 
             // Draw spaceship
-            if (!gameOver) {
+            if (gameState === GAME_STATES.PLAYING) {
                 ctx.save();
                 ctx.translate(ship.x, ship.y);
                 ctx.rotate(ship.angle);
@@ -588,73 +588,75 @@
                 ctx.restore();
             }
 
-            // Draw scoreboard
-            ctx.fillStyle = 'white';
-            ctx.font = '16px Arial';
-            ctx.textAlign = 'left';
-            ctx.fillText('Controls: Mouse Move (Rotate), W (Thrust), Space (Afterburner), Right Click (Shoot)', 10, 20);
-            ctx.fillText('Click canvas to focus', 10, 40);
-            ctx.fillText(`Level: ${currentLevel}`, 10, 60);
-            ctx.fillText(`Score: ${score}/${scoreToLevelUp}`, 10, 80);
-            // Health bar
-            const healthPercent = ship.currentHealth / config.ship.maxHealth;
-            const barWidth = 200;
-            const barHeight = 20;
-            const barX = 10;
-            const barY = 100;
+            // Draw scoreboard and UI (only during gameplay)
+            if (gameState === GAME_STATES.PLAYING) {
+                ctx.fillStyle = 'white';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText('Controls: Mouse Move (Rotate), W (Thrust), Space (Afterburner), Right Click (Shoot)', 10, 20);
+                ctx.fillText('Click canvas to focus', 10, 40);
+                ctx.fillText(`Level: ${currentLevel}`, 10, 60);
+                ctx.fillText(`Score: ${score}/${scoreToLevelUp}`, 10, 80);
+                // Health bar
+                const healthPercent = ship.currentHealth / config.ship.maxHealth;
+                const barWidth = 200;
+                const barHeight = 20;
+                const barX = 10;
+                const barY = 100;
 
-            // Health bar background
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-            ctx.fillRect(barX, barY, barWidth, barHeight);
+                // Health bar background
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.fillRect(barX, barY, barWidth, barHeight);
 
-            // Health bar fill with color coding
-            let healthColor;
-            if (healthPercent > 0.6) healthColor = '#00ff00'; // Green
-            else if (healthPercent > 0.3) healthColor = '#ffff00'; // Yellow
-            else healthColor = '#ff0000'; // Red
+                // Health bar fill with color coding
+                let healthColor;
+                if (healthPercent > 0.6) healthColor = '#00ff00'; // Green
+                else if (healthPercent > 0.3) healthColor = '#ffff00'; // Yellow
+                else healthColor = '#ff0000'; // Red
 
-            ctx.fillStyle = healthColor;
-            ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
+                ctx.fillStyle = healthColor;
+                ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
 
-            // Health bar border
-            ctx.strokeStyle = 'white';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(barX, barY, barWidth, barHeight);
+                // Health bar border
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(barX, barY, barWidth, barHeight);
 
-            // Health text
-            ctx.fillStyle = 'white';
-            ctx.font = '14px Arial';
-            ctx.fillText(`Health: ${ship.currentHealth.toFixed(0)}/${config.ship.maxHealth}`, barX, barY - 5);
+                // Health text
+                ctx.fillStyle = 'white';
+                ctx.font = '14px Arial';
+                ctx.fillText(`Health: ${ship.currentHealth.toFixed(0)}/${config.ship.maxHealth}`, barX, barY - 5);
 
-            // Afterburner bar
-            const energyPercent = ship.afterburnerEnergy / config.ship.afterburnerMax;
-            const energyBarY = barY + 30;
+                // Afterburner bar
+                const energyPercent = ship.afterburnerEnergy / config.ship.afterburnerMax;
+                const energyBarY = barY + 30;
 
-            // Afterburner bar background
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-            ctx.fillRect(barX, energyBarY, barWidth, barHeight);
+                // Afterburner bar background
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.fillRect(barX, energyBarY, barWidth, barHeight);
 
-            // Afterburner bar fill with color coding
-            let energyColor;
-            if (energyPercent > 0.6) energyColor = '#ffffff'; // White
-            else if (energyPercent > 0.3) energyColor = '#00ffff'; // Cyan
-            else energyColor = '#0000ff'; // Blue
+                // Afterburner bar fill with color coding
+                let energyColor;
+                if (energyPercent > 0.6) energyColor = '#ffffff'; // White
+                else if (energyPercent > 0.3) energyColor = '#00ffff'; // Cyan
+                else energyColor = '#0000ff'; // Blue
 
-            ctx.fillStyle = energyColor;
-            ctx.fillRect(barX, energyBarY, barWidth * energyPercent, barHeight);
+                ctx.fillStyle = energyColor;
+                ctx.fillRect(barX, energyBarY, barWidth * energyPercent, barHeight);
 
-            // Afterburner bar border
-            ctx.strokeStyle = 'white';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(barX, energyBarY, barWidth, barHeight);
+                // Afterburner bar border
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(barX, energyBarY, barWidth, barHeight);
 
-            // Afterburner text
-            ctx.fillStyle = 'white';
-            ctx.font = '14px Arial';
-            ctx.fillText(`Afterburner: ${ship.afterburnerEnergy.toFixed(0)}/${config.ship.afterburnerMax}`, barX, energyBarY - 5);
+                // Afterburner text
+                ctx.fillStyle = 'white';
+                ctx.font = '14px Arial';
+                ctx.fillText(`Afterburner: ${ship.afterburnerEnergy.toFixed(0)}/${config.ship.afterburnerMax}`, barX, energyBarY - 5);
 
-            ctx.fillText(`Bullets Fired: ${bulletsFired}`, 10, energyBarY + 50);
-            ctx.fillText(`Hit %: ${bulletsFired > 0 ? ((bulletsHit / bulletsFired) * 100).toFixed(1) : 0}%`, 10, energyBarY + 70);
+                ctx.fillText(`Bullets Fired: ${bulletsFired}`, 10, energyBarY + 50);
+                ctx.fillText(`Hit %: ${bulletsFired > 0 ? ((bulletsHit / bulletsFired) * 100).toFixed(1) : 0}%`, 10, energyBarY + 70);
+            }
 
             // Game over
             if (gameState === GAME_STATES.GAME_OVER) {
