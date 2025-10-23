@@ -21,6 +21,7 @@ This roadmap outlines the development phases for the Galactic Frontier single-pl
   - Development tooling integration (source maps, error overlays)
   - Production build system preparation
   - Development environment testing and validation
+  - PM2 dev process management for Vite (5174) and API (3001)
 
 ### 1.1 Configuration System Integration
 - **Milestone**: Implement config.json loading system
@@ -242,6 +243,7 @@ This roadmap outlines the development phases for the Galactic Frontier single-pl
 - **Milestone**: Live game deployment
 - **Deliverables**:
   - Production build validation (Vite build from Phase 1)
+  - PM2 production process management for API (and workers if any)
   - CDN asset hosting setup
   - Monitoring and logging
   - Backup and recovery procedures
