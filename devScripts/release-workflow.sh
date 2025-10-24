@@ -45,6 +45,16 @@ execute_git_command() {
 
 # Main workflow
 main() {
+    # Ensure we're in project root directory
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+    echo "📁 Changing to project root: $PROJECT_ROOT"
+    cd "$PROJECT_ROOT" || {
+        echo "❌ Error: Could not change to project root directory"
+        exit 1
+    }
+
     # Initial checks
     echo "🔍 Checking current status..."
     check_dev_branch

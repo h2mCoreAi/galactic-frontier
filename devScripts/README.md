@@ -21,9 +21,12 @@ This directory contains automation scripts for development workflows.
 ### Usage:
 
 ```bash
-# Make sure you're on dev branch with changes
-cd /srv/galactic-frontier
+# Can run from anywhere, but recommended to run from project root
 ./devScripts/release-workflow.sh
+
+# Or run from devScripts directory (script will auto-detect and cd to project root)
+cd devScripts
+./release-workflow.sh
 ```
 
 ### Interactive Flow:
