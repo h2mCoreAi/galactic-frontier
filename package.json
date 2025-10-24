@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "prebuild": "node devScripts/copy-config-to-public.js",
     "build": "vite build",
     "preview": "vite preview",
     "pm2:dev:start": "pm2 start ecosystem.dev.config.js",

@@ -175,6 +175,14 @@ app.get('/health', (req, res) => {
   });
 });
 
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    service: 'galactic-frontier-backend'
+  });
+});
+
 // API Routes
 
 // Authentication routes
