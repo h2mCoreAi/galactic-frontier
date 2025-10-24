@@ -14,7 +14,7 @@ This directory contains automation scripts for development workflows.
    - Commits to `dev` branch
    - Pushes `dev` to origin
    - Switches to `main` branch
-   - Merges `dev` into `main`
+   - Merges `dev` into `main` (no editor prompt)
    - Pushes `main` to origin
    - Returns to `dev` branch
 
@@ -46,6 +46,7 @@ feat: complete Phase 1 - core game mechanics enhancement
 ### Safety Features:
 - ✅ Validates current branch is `dev`
 - ✅ Ensures uncommitted changes exist
+- ✅ Uses `--no-edit` flag to prevent merge commit editor prompts
 - ✅ Stops on any Git command failure
 - ✅ Clear error messages and status updates
 

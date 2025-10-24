@@ -90,7 +90,7 @@ main() {
     execute_git_command "git checkout main" "Switching to main branch"
 
     # Step 5: Merge dev into main
-    execute_git_command "git merge dev" "Merging dev into main"
+    execute_git_command "git merge --no-edit dev" "Merging dev into main"
 
     # Step 6: Push main branch
     execute_git_command "git push origin main" "Pushing main branch to origin"
