@@ -159,15 +159,69 @@
             `).join('');
         }
 
-        // Initialize with placeholder scores
-        const placeholderScores = [
-            { name: 'PLAYER 1', value: 250 },
-            { name: 'PLAYER 2', value: 200 },
-            { name: 'PLAYER 3', value: 180 },
-            { name: 'PLAYER 4', value: 150 },
-            { name: 'PLAYER 5', value: 120 }
-        ];
-        updateTopScores(placeholderScores);
+        // Score persistence functions
+        function saveHighScore(finalScore, level) {
+            try {
+                const highScores = getHighScores();
+                const newScore = {
+                    score: finalScore,
+                    level: level,
+                    timestamp: Date.now(),
+                    sessionId: Math.random().toString(36).substr(2, 9)
+                };
+
+                highScores.push(newScore);
+                highScores.sort((a, b) => b.score - a.score);
+                highScores.splice(10); // Keep only top 10
+
+                localStorage.setItem('galacticFrontier_highScores', JSON.stringify(highScores));
+                console.log('High score saved:', newScore);
+                return true;
+            } catch (error) {
+                console.error('Failed to save high score:', error);
+                return false;
+            }
+        }
+
+        function getHighScores() {
+            try {
+                const stored = localStorage.getItem('galacticFrontier_highScores');
+                return stored ? JSON.parse(stored) : [];
+            } catch (error) {
+                console.error('Failed to load high scores:', error);
+                return [];
+            }
+        }
+
+        function validateScoreData(score) {
+            // Anti-cheat validation
+            if (typeof score !== 'number' || score < 0 || score > 100000) {
+                console.warn('Invalid score detected:', score);
+                return false;
+            }
+            return true;
+        }
+
+        // Initialize top scores display with saved high scores
+        function initializeTopScores() {
+            const highScores = getHighScores();
+            const displayScores = highScores.slice(0, 5).map((hs, index) => ({
+                name: `LEVEL ${hs.level}`,
+                value: hs.score
+            }));
+
+            // Fill with placeholders if not enough scores
+            while (displayScores.length < 5) {
+                displayScores.push({
+                    name: `PLAYER ${displayScores.length + 1}`,
+                    value: (5 - displayScores.length) * 50
+                });
+            }
+
+            updateTopScores(displayScores);
+        }
+
+        initializeTopScores();
 
         let configLoaded = false;
 
@@ -265,6 +319,17 @@
         // Explosions
         const explosions = [];
 
+        // Power-ups
+        const powerUps = [];
+        let healthPowerUpSpawnTimer = 0;
+        let fanShotPowerUpSpawnTimer = 0;
+        let nextHealthPowerUpSpawn = 0; // Will be initialized after config load
+        let nextFanShotPowerUpSpawn = 0; // Will be initialized after config load
+
+        // Active power-up effects
+        let fanShotActive = false;
+        let fanShotTimer = 0;
+
         // Game states
         const GAME_STATES = {
             START: 'start',
@@ -280,6 +345,17 @@
         let bulletsHit = 0;
         let currentLevel = 1;
         let scoreToLevelUp = 500; // Will be replaced with config value
+
+        // Score multiplier system
+        let scoreMultiplier = 1.0;
+        let comboTimer = 0;
+        let comboCount = 0;
+        let lastKillTime = 0;
+
+        // Score display enhancement
+        let scoreChangeIndicator = null;
+        let scoreChangeTimer = 0;
+        let lastDisplayedScore = 0;
 
         // Apply config values to game variables
         function applyConfig() {
@@ -304,6 +380,10 @@
             scoreToLevelUp = config.game.scoreToLevelUp;
             minSpawnInterval = config.game.minSpawnInterval;
             maxSpawnInterval = config.game.maxSpawnInterval;
+
+            // Power-up configuration
+            nextHealthPowerUpSpawn = Math.random() * (config.game.maxHealthSpawnInterval - config.game.minHealthSpawnInterval) + config.game.minHealthSpawnInterval;
+            nextFanShotPowerUpSpawn = Math.random() * (config.game.maxFanShotSpawnInterval - config.game.minFanShotSpawnInterval) + config.game.minFanShotSpawnInterval;
 
             console.log('Configuration applied to game variables');
         }
@@ -401,13 +481,25 @@
             enemyProjectiles.length = 0;
             enemies.length = 0;
             explosions.length = 0;
+            powerUps.length = 0;
             spawnTimer = 0;
             nextSpawn = Math.random() * (maxSpawnInterval - minSpawnInterval) + minSpawnInterval;
+            healthPowerUpSpawnTimer = 0;
+            fanShotPowerUpSpawnTimer = 0;
+            nextHealthPowerUpSpawn = Math.random() * (config.game.maxHealthSpawnInterval - config.game.minHealthSpawnInterval) + config.game.minHealthSpawnInterval;
+            nextFanShotPowerUpSpawn = Math.random() * (config.game.maxFanShotSpawnInterval - config.game.minFanShotSpawnInterval) + config.game.minFanShotSpawnInterval;
+            fanShotActive = false;
+            fanShotTimer = 0;
             currentLevel = 1;
             gameState = GAME_STATES.PLAYING;
         }
 
         function endGame() {
+            // Save high score before ending game
+            if (validateScoreData(score)) {
+                saveHighScore(score, currentLevel);
+                initializeTopScores(); // Refresh the top scores display
+            }
             gameState = GAME_STATES.GAME_OVER;
         }
 
@@ -533,7 +625,11 @@
             else if (rand < 0.8) type = baseEnemyTypes[1];
             else type = baseEnemyTypes[2];
 
-            const damageMultiplier = Math.pow(1.1, currentLevel - 1); // 10% increase per level
+            const levelMultiplier = Math.pow(1.1, currentLevel - 1); // 10% increase per level
+
+            // Level-based scaling for various attributes
+            const speedMultiplier = Math.pow(1.05, currentLevel - 1); // 5% speed increase per level
+            const healthMultiplier = Math.pow(1.15, currentLevel - 1); // 15% health increase per level (for collision damage)
 
             const angle = Math.random() * Math.PI * 2;
             const distance = 500;
@@ -541,13 +637,14 @@
                 universeX: universeX + Math.cos(angle) * distance,
                 universeY: universeY + Math.sin(angle) * distance,
                 angle: 0,
-                speed: type.speed,
+                speed: type.speed * speedMultiplier, // Scaled speed
                 size: type.size,
                 points: type.points,
                 type: type.type,
                 shootTimer: Math.random() * type.shootInterval,
-                projectileDamage: type.projectileDamage * damageMultiplier,
-                collisionDamage: type.collisionDamage * damageMultiplier
+                projectileDamage: type.projectileDamage * levelMultiplier, // Scaled projectile damage
+                collisionDamage: type.collisionDamage * healthMultiplier, // Scaled collision damage
+                level: currentLevel // Track enemy level for behavior modifications
             });
         }
 
@@ -577,13 +674,30 @@
 
             // Handle shooting (left mouse button)
             if (leftMousePressed && ship.lastShot <= 0) {
-                projectiles.push({
-                    universeX: universeX,
-                    universeY: universeY,
-                    angle: ship.angle,
-                    life: projectileLife
-                });
-                bulletsFired++;
+                if (fanShotActive) {
+                    // Fan-shot: fire 10 projectiles in a spread pattern
+                    const spreadAngle = config.projectiles.fanShotAngle; // 0.1047 radians (6 degrees)
+                    const halfSpread = (config.projectiles.fanShotCount - 1) * spreadAngle / 2;
+                    for (let i = 0; i < config.projectiles.fanShotCount; i++) {
+                        const angle = ship.angle - halfSpread + (i * spreadAngle);
+                        projectiles.push({
+                            universeX: universeX,
+                            universeY: universeY,
+                            angle: angle,
+                            life: projectileLife
+                        });
+                    }
+                    bulletsFired += config.projectiles.fanShotCount;
+                } else {
+                    // Normal shot: single projectile
+                    projectiles.push({
+                        universeX: universeX,
+                        universeY: universeY,
+                        angle: ship.angle,
+                        life: projectileLife
+                    });
+                    bulletsFired++;
+                }
                 ship.lastShot = projectileCooldown;
             }
             if (ship.lastShot > 0) ship.lastShot--;
@@ -672,7 +786,7 @@
                             radius: 0,
                             life: 20
                         });
-                        score += e.points;
+                        addScore(e.points, e.type);
                         bulletsHit++;
                         enemies.splice(j, 1);
                         projectiles.splice(i, 1);
@@ -682,6 +796,10 @@
                             score = 0; // Reset score for new level
                             enemies.length = 0; // Clear enemies
                             enemyProjectiles.length = 0; // Clear enemy projectiles
+                            // Reset combo on level up
+                            comboCount = 0;
+                            scoreMultiplier = 1.0;
+                            comboTimer = 0;
                         }
                         break;
                     }
@@ -715,23 +833,98 @@
             if (spawnTimer >= nextSpawn) {
                 spawnEnemy();
                 spawnTimer = 0;
-                nextSpawn = Math.random() * (maxSpawnInterval - minSpawnInterval) + minSpawnInterval;
+                // Level-based spawn rate adjustment - enemies spawn more frequently at higher levels
+                const spawnRateMultiplier = Math.max(0.3, 1 - (currentLevel - 1) * 0.1); // Minimum 30% of base rate
+                const adjustedMinInterval = minSpawnInterval * spawnRateMultiplier;
+                const adjustedMaxInterval = maxSpawnInterval * spawnRateMultiplier;
+                nextSpawn = Math.random() * (adjustedMaxInterval - adjustedMinInterval) + adjustedMinInterval;
             }
 
             for (let i = enemies.length - 1; i >= 0; i--) {
                 const e = enemies[i];
+
+                // Calculate target angle toward player
                 const dx = universeX - e.universeX;
                 const dy = universeY - e.universeY;
-                e.angle = Math.atan2(dy, dx);
-                e.universeX += Math.cos(e.angle) * e.speed;
-                e.universeY += Math.sin(e.angle) * e.speed;
+                const targetAngle = Math.atan2(dy, dx);
+
+                // Smooth turning mechanics - gradual rotation toward target
+                let angleDiff = targetAngle - e.angle;
+                // Normalize angle difference to [-π, π]
+                while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+                while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+
+                // Turn rate and behavior based on enemy type
+                let turnRate, pursuitMultiplier, shootAccuracy;
+                if (e.type === 'small') {
+                    turnRate = 0.15; // Fast turning - aggressive
+                    pursuitMultiplier = 1.2; // More aggressive pursuit
+                    shootAccuracy = 0.9; // Good accuracy
+                } else if (e.type === 'medium') {
+                    turnRate = 0.1; // Medium turning - balanced
+                    pursuitMultiplier = 1.0; // Normal pursuit
+                    shootAccuracy = 0.95; // Better accuracy
+                } else { // large
+                    turnRate = 0.05; // Slow turning - methodical
+                    pursuitMultiplier = 0.8; // Less aggressive pursuit
+                    shootAccuracy = 1.0; // Perfect accuracy
+                }
+
+                // Apply pursuit multiplier to turn rate for behavioral variation
+                turnRate *= pursuitMultiplier;
+                e.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), turnRate);
+
+                // Basic collision avoidance - steer away from nearby enemies
+                let avoidX = 0;
+                let avoidY = 0;
+                for (let j = 0; j < enemies.length; j++) {
+                    if (i === j) continue;
+                    const other = enemies[j];
+                    const dist = Math.hypot(other.universeX - e.universeX, other.universeY - e.universeY);
+                    if (dist < 30 && dist > 0) { // Avoid if too close
+                        const avoidAngle = Math.atan2(e.universeY - other.universeY, e.universeX - other.universeX);
+                        avoidX += Math.cos(avoidAngle) * (30 - dist) * 0.1;
+                        avoidY += Math.sin(avoidAngle) * (30 - dist) * 0.1;
+                    }
+                }
+
+                // Apply movement with collision avoidance
+                const moveX = Math.cos(e.angle) + avoidX;
+                const moveY = Math.sin(e.angle) + avoidY;
+                const moveMagnitude = Math.hypot(moveX, moveY);
+
+                if (moveMagnitude > 0) {
+                    e.universeX += (moveX / moveMagnitude) * e.speed;
+                    e.universeY += (moveY / moveMagnitude) * e.speed;
+                } else {
+                    // Fallback if no movement calculated
+                    e.universeX += Math.cos(e.angle) * e.speed;
+                    e.universeY += Math.sin(e.angle) * e.speed;
+                }
 
                 e.shootTimer++;
                 if (e.shootTimer >= e.shootInterval) {
+                    // Calculate shooting direction toward player with accuracy variation
+                    const shootDx = universeX - e.universeX;
+                    const shootDy = universeY - e.universeY;
+                    const baseShootAngle = Math.atan2(shootDy, shootDx);
+
+                    // Apply accuracy variation based on enemy type
+                    let accuracyVariation;
+                    if (e.type === 'small') {
+                        accuracyVariation = (Math.random() - 0.5) * 0.3; // ±0.15 radians variation
+                    } else if (e.type === 'medium') {
+                        accuracyVariation = (Math.random() - 0.5) * 0.2; // ±0.1 radians variation
+                    } else { // large
+                        accuracyVariation = 0; // Perfect accuracy
+                    }
+
+                    const shootAngle = baseShootAngle + accuracyVariation;
+
                     enemyProjectiles.push({
                         universeX: e.universeX,
                         universeY: e.universeY,
-                        angle: e.angle,
+                        angle: shootAngle, // Shoot toward player with accuracy variation
                         life: projectileLife,
                         damage: e.projectileDamage
                     });
@@ -761,6 +954,144 @@
                 exp.radius += 2;
                 exp.life--;
                 if (exp.life <= 0) explosions.splice(i, 1);
+            }
+        }
+
+        function spawnPowerUp(type) {
+            if (!configLoaded) return;
+
+            const angle = Math.random() * Math.PI * 2;
+            const distance = Math.random() * 300 + 200; // Spawn between 200-500 units from player
+            powerUps.push({
+                universeX: universeX + Math.cos(angle) * distance,
+                universeY: universeY + Math.sin(angle) * distance,
+                type: type,
+                size: 8,
+                life: 600 // Power-ups disappear after 600 frames
+            });
+        }
+
+        function updateScoreMultiplier() {
+            if (gameState !== GAME_STATES.PLAYING || !configLoaded) return;
+
+            comboTimer--;
+            if (comboTimer <= 0) {
+                comboCount = 0;
+                scoreMultiplier = 1.0;
+            }
+
+            // Update score change indicator animation
+            if (scoreChangeIndicator) {
+                scoreChangeIndicator.life--;
+                scoreChangeIndicator.alpha = scoreChangeIndicator.life / 60;
+                scoreChangeIndicator.y -= 0.5; // Float upward
+
+                if (scoreChangeIndicator.life <= 0) {
+                    scoreChangeIndicator = null;
+                }
+            }
+        }
+
+        function addScore(points, enemyType) {
+            // Anti-cheat: validate reasonable score values
+            if (points < 0 || points > 1000) {
+                console.warn('Invalid score value detected:', points);
+                return;
+            }
+
+            // Combo system: consecutive kills within 1 second increase multiplier
+            const currentTime = Date.now();
+            const timeSinceLastKill = currentTime - lastKillTime;
+
+            if (timeSinceLastKill < 1000) { // 1 second window for combo
+                comboCount++;
+                scoreMultiplier = Math.min(5.0, 1.0 + (comboCount * 0.2)); // Max 5x multiplier
+                comboTimer = 120; // 2 seconds to maintain combo
+            } else {
+                comboCount = 1;
+                scoreMultiplier = 1.0;
+                comboTimer = 120;
+            }
+            lastKillTime = currentTime;
+
+            const multipliedPoints = Math.floor(points * scoreMultiplier);
+            const oldScore = score;
+            score += multipliedPoints;
+
+            // Create score change indicator for animations
+            scoreChangeIndicator = {
+                points: multipliedPoints,
+                basePoints: points,
+                multiplier: scoreMultiplier,
+                x: canvas.width / 2,
+                y: 35,
+                alpha: 1.0,
+                life: 60 // 1 second display
+            };
+            scoreChangeTimer = 60;
+
+            console.log(`Enemy destroyed: ${enemyType} (${points} pts × ${scoreMultiplier.toFixed(1)} = ${multipliedPoints} pts)`);
+
+            // Check for milestone achievements
+            if (score >= 1000 && oldScore < 1000) {
+                console.log('🎉 Milestone: 1000 points reached!');
+            } else if (score >= 500 && oldScore < 500) {
+                console.log('🎉 Milestone: 500 points reached!');
+            }
+        }
+
+        function updatePowerUps() {
+            if (gameState !== GAME_STATES.PLAYING || !configLoaded) return;
+
+            // Update power-up spawn timers
+            healthPowerUpSpawnTimer++;
+            if (healthPowerUpSpawnTimer >= nextHealthPowerUpSpawn) {
+                spawnPowerUp('health');
+                healthPowerUpSpawnTimer = 0;
+                nextHealthPowerUpSpawn = Math.random() * (config.game.maxHealthSpawnInterval - config.game.minHealthSpawnInterval) + config.game.minHealthSpawnInterval;
+            }
+
+            fanShotPowerUpSpawnTimer++;
+            if (fanShotPowerUpSpawnTimer >= nextFanShotPowerUpSpawn) {
+                spawnPowerUp('fanShot');
+                fanShotPowerUpSpawnTimer = 0;
+                nextFanShotPowerUpSpawn = Math.random() * (config.game.maxFanShotSpawnInterval - config.game.minFanShotSpawnInterval) + config.game.minFanShotSpawnInterval;
+            }
+
+            // Update active power-up effects
+            if (fanShotActive) {
+                fanShotTimer--;
+                if (fanShotTimer <= 0) {
+                    fanShotActive = false;
+                }
+            }
+
+            // Update power-up lifetimes and check collisions
+            for (let i = powerUps.length - 1; i >= 0; i--) {
+                const p = powerUps[i];
+                p.life--;
+
+                // Check collision with ship
+                const dist = Math.hypot(p.universeX - universeX, p.universeY - universeY);
+                if (dist < p.size + ship.size) {
+                    // Power-up collected
+                    if (p.type === 'health') {
+                        ship.currentHealth = Math.min(config.ship.maxHealth, ship.currentHealth + config.game.healthPowerUpValue);
+                        console.log('Health power-up collected! +10 HP');
+                    } else if (p.type === 'fanShot') {
+                        // Prevent stacking - reset timer if already active
+                        fanShotActive = true;
+                        fanShotTimer = config.game.fanShotDuration;
+                        console.log('Fan-shot power-up collected! Multi-shot active for 10 seconds');
+                    }
+                    powerUps.splice(i, 1);
+                    continue;
+                }
+
+                // Remove expired power-ups
+                if (p.life <= 0) {
+                    powerUps.splice(i, 1);
+                }
             }
         }
 
@@ -849,6 +1180,50 @@
                 }
             });
 
+            // Draw power-ups
+            powerUps.forEach(p => {
+                const screenX = p.universeX - universeX + canvas.width / 2;
+                const screenY = p.universeY - universeY + canvas.height / 2;
+                if (screenX >= 0 && screenX <= canvas.width && screenY >= 0 && screenY <= canvas.height) {
+                    ctx.save();
+                    ctx.translate(screenX, screenY);
+
+                    // Draw power-up based on type
+                    if (p.type === 'health') {
+                        ctx.fillStyle = '#00ff00'; // Green for health
+                        ctx.beginPath();
+                        ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Draw cross
+                        ctx.strokeStyle = 'white';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(-4, 0);
+                        ctx.lineTo(4, 0);
+                        ctx.moveTo(0, -4);
+                        ctx.lineTo(0, 4);
+                        ctx.stroke();
+                    } else if (p.type === 'fanShot') {
+                        ctx.fillStyle = '#ff00ff'; // Magenta for fan-shot
+                        ctx.beginPath();
+                        ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Draw fan pattern
+                        ctx.strokeStyle = 'white';
+                        ctx.lineWidth = 2;
+                        for (let i = 0; i < 5; i++) {
+                            const angle = (i * Math.PI * 2) / 5;
+                            ctx.beginPath();
+                            ctx.moveTo(0, 0);
+                            ctx.lineTo(Math.cos(angle) * p.size * 1.5, Math.sin(angle) * p.size * 1.5);
+                            ctx.stroke();
+                        }
+                    }
+
+                    ctx.restore();
+                }
+            });
+
             // Draw explosions
             ctx.strokeStyle = 'yellow';
             explosions.forEach(exp => {
@@ -896,6 +1271,28 @@
                 ctx.font = '20px Arial';
                 ctx.textAlign = 'center';
                 ctx.fillText(`LEVEL ${currentLevel}     SCORE ${score}/${scoreToLevelUp}`, canvas.width / 2, 25);
+
+                // Draw score change indicator
+                if (scoreChangeIndicator) {
+                    ctx.save();
+                    ctx.globalAlpha = scoreChangeIndicator.alpha;
+                    ctx.fillStyle = scoreChangeIndicator.multiplier > 1 ? '#00ff00' : 'white';
+                    ctx.font = '16px Arial';
+                    ctx.textAlign = 'center';
+                    const indicatorText = scoreChangeIndicator.multiplier > 1
+                        ? `+${scoreChangeIndicator.points} (${scoreChangeIndicator.multiplier.toFixed(1)}x)`
+                        : `+${scoreChangeIndicator.points}`;
+                    ctx.fillText(indicatorText, scoreChangeIndicator.x, scoreChangeIndicator.y);
+                    ctx.restore();
+                }
+
+                // Draw combo indicator
+                if (comboCount > 1 && comboTimer > 0) {
+                    ctx.fillStyle = '#ffff00';
+                    ctx.font = '14px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`${comboCount}x COMBO!`, canvas.width / 2, 50);
+                }
 
                 // Top bars - Health and Afterburner side by side
                 const barWidth = 150;
@@ -952,6 +1349,29 @@
                 ctx.textAlign = 'right';
                 ctx.fillText(`AFTERBURNER ${ship.afterburnerEnergy.toFixed(0)}/${config.ship.afterburnerMax}`, energyBarX + barWidth, barY - 3);
 
+                // Fan-shot indicator (when active)
+                if (fanShotActive) {
+                    const fanShotBarY = barY + 25;
+                    const fanShotPercent = fanShotTimer / config.game.fanShotDuration;
+                    const fanShotBarX = 10;
+                    const fanShotWidth = 80;
+
+                    ctx.fillStyle = 'rgba(255, 0, 255, 0.3)';
+                    ctx.fillRect(fanShotBarX, fanShotBarY, fanShotWidth, barHeight);
+
+                    ctx.fillStyle = '#ff00ff';
+                    ctx.fillRect(fanShotBarX, fanShotBarY, fanShotWidth * fanShotPercent, barHeight);
+
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(fanShotBarX, fanShotBarY, fanShotWidth, barHeight);
+
+                    ctx.fillStyle = 'white';
+                    ctx.font = '10px Arial';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(`FAN-SHOT ${(fanShotTimer / 60).toFixed(1)}s`, fanShotBarX, fanShotBarY - 3);
+                }
+
                 // Bottom stats
                 ctx.fillStyle = 'white';
                 ctx.font = '14px Arial';
@@ -978,6 +1398,8 @@
                 updateProjectiles();
                 updateEnemies();
                 updateExplosions();
+                updatePowerUps();
+                updateScoreMultiplier();
             }
             draw();
             requestAnimationFrame(gameLoop);
