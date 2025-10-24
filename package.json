@@ -14,7 +14,8 @@
     "pm2:dev:start": "pm2 start ecosystem.dev.config.js",
     "pm2:dev:restart": "pm2 restart ecosystem.dev.config.js",
     "pm2:dev:stop": "pm2 stop ecosystem.dev.config.js",
-    "pm2:dev:logs": "pm2 logs"
+    "pm2:dev:logs": "pm2 logs",
+    "db:test": "node -e \"require('dotenv').config({path:'.env.production'}); const {Pool} = require('pg'); const pool = new Pool({connectionString: process.env.DATABASE_URL}); pool.query('SELECT 1').then(() => {console.log('Database connection successful'); pool.end(); process.exit(0);}).catch(err => {console.error('Database connection failed:', err.message); pool.end(); process.exit(1);});\""
   },
   "keywords": [
     "game",
