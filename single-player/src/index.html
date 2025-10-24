@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Galactic Frontier</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <style>
         body {
             margin: 0;
@@ -166,7 +167,7 @@
         // Check if backend is available
         async function checkBackendAvailability() {
             try {
-                const response = await fetch('http://localhost:3001/health', {
+                const response = await fetch('/api/health', {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -189,7 +190,7 @@
                         headers['Authorization'] = `Bearer ${authToken}`;
                     }
 
-                    const response = await fetch('http://localhost:3001/api/sessions/start', {
+                    const response = await fetch('/api/sessions/start', {
                         method: 'POST',
                         headers: headers,
                         credentials: 'include'
@@ -217,7 +218,7 @@
                         headers['Authorization'] = `Bearer ${authToken}`;
                     }
 
-                    const response = await fetch(`http://localhost:3001/api/sessions/${currentSessionId}/end`, {
+                    const response = await fetch(`/api/sessions/${currentSessionId}/end`, {
                         method: 'PUT',
                         headers: headers,
                         credentials: 'include',
@@ -267,7 +268,7 @@
                             headers['Authorization'] = `Bearer ${authToken}`;
                         }
 
-                        const response = await fetch('http://localhost:3001/api/highscores', {
+                        const response = await fetch('/api/highscores', {
                             method: 'POST',
                             headers: headers,
                             credentials: 'include',
@@ -311,7 +312,7 @@
             // Try to get from backend first, fallback to local
             if (backendAvailable) {
                 try {
-                    const response = await fetch('http://localhost:3001/api/highscores?limit=10', {
+                    const response = await fetch('/api/highscores?limit=10', {
                         method: 'GET',
                         headers: { 'Content-Type': 'application/json' },
                         credentials: 'include'
@@ -371,7 +372,12 @@
         async function loadConfig() {
             try {
                 console.log('Loading game configuration...');
-                const response = await fetch('/config/config.json');
+                // Try backend-served config first
+                let response = await fetch('/api/config.json');
+                if (!response.ok) {
+                    // Fallback to static config under /config for purely static hosting
+                    response = await fetch('/config/config.json');
+                }
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -438,7 +444,7 @@
             if (!authToken) return;
 
             try {
-                const response = await fetch('http://localhost:3001/api/profile', {
+                const response = await fetch('/api/profile', {
                     headers: {
                         'Authorization': `Bearer ${authToken}`
                     }
@@ -460,7 +466,7 @@
 
         function loginWithDiscord() {
             // Redirect to Discord OAuth
-            window.location.href = 'http://localhost:3001/auth/discord';
+            window.location.href = '/auth/discord';
         }
 
         function logout() {
@@ -1553,7 +1559,26 @@
                 // Create audio context
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 if (AudioContext) {
-                    audioContext = new AudioContext();
+                    // Defer creation until a user gesture to satisfy autoplay policies
+                    if (document.body) {
+                        const resume = () => {
+                            try {
+                                if (!audioContext) {
+                                    audioContext = new AudioContext();
+                                }
+                                if (audioContext.state === 'suspended') {
+                                    audioContext.resume();
+                                }
+                                document.removeEventListener('pointerdown', resume);
+                                document.removeEventListener('keydown', resume);
+                                console.log('Audio system initialized');
+                            } catch (e) {
+                                console.warn('Audio resume failed:', e);
+                            }
+                        };
+                        document.addEventListener('pointerdown', resume, { once: true });
+                        document.addEventListener('keydown', resume, { once: true });
+                    }
                     console.log('Audio system initialized');
                 } else {
                     console.warn('Web Audio API not supported, using fallback');
