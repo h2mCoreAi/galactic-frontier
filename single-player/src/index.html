@@ -313,7 +313,7 @@
         let mouseY = canvas.height / 2;
         let thrustPressed = false;
         let afterburnerPressed = false;
-        let rightMousePressed = false;
+        let leftMousePressed = false;
 
         canvas.addEventListener('mousemove', (e) => {
             const rect = canvas.getBoundingClientRect();
@@ -328,13 +328,13 @@
         canvas.addEventListener('mousedown', (e) => {
             if (gameState === GAME_STATES.PLAYING && e.button === 0) { // Left mouse button
                 e.preventDefault(); // Prevent context menu
-                rightMousePressed = true;
+                leftMousePressed = true;
             }
         });
 
         canvas.addEventListener('mouseup', (e) => {
             if (gameState === GAME_STATES.PLAYING && e.button === 0) { // Left mouse button
-                rightMousePressed = false;
+                leftMousePressed = false;
             }
         });
 
@@ -576,7 +576,7 @@
             universeY += Math.sin(ship.angle) * effectiveSpeed;
 
             // Handle shooting (left mouse button)
-            if (rightMousePressed && ship.lastShot <= 0) {
+            if (leftMousePressed && ship.lastShot <= 0) {
                 projectiles.push({
                     universeX: universeX,
                     universeY: universeY,
@@ -587,6 +587,65 @@
                 ship.lastShot = projectileCooldown;
             }
             if (ship.lastShot > 0) ship.lastShot--;
+        }
+
+        // --- Basic Touch Support (maps to existing inputs) ---
+        // Prevent default gestures like scroll/zoom over the canvas
+        canvas.style.touchAction = 'none';
+
+        const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        if (isTouch) {
+            const getTouchPos = (t) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = t.clientX - rect.left;
+                const y = t.clientY - rect.top;
+                return {
+                    x: Math.max(0, Math.min(x, canvas.width)),
+                    y: Math.max(0, Math.min(y, canvas.height))
+                };
+            };
+
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const t = e.touches[0];
+                if (!t) return;
+                const { x, y } = getTouchPos(t);
+                mouseX = x;
+                mouseY = y;
+                // Shooting on initial touch
+                leftMousePressed = true;
+                // Thrust if first touch on left half of canvas
+                thrustPressed = x < canvas.width / 2;
+                // Afterburner when 2+ fingers
+                afterburnerPressed = e.touches.length >= 2;
+            }, { passive: false });
+
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                const t = e.touches[0];
+                if (!t) return;
+                const { x, y } = getTouchPos(t);
+                mouseX = x;
+                mouseY = y;
+                thrustPressed = x < canvas.width / 2;
+                afterburnerPressed = e.touches.length >= 2;
+            }, { passive: false });
+
+            canvas.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                if (e.touches.length === 0) {
+                    leftMousePressed = false;
+                    thrustPressed = false;
+                    afterburnerPressed = false;
+                } else {
+                    const t = e.touches[0];
+                    if (t) {
+                        const { x } = getTouchPos(t);
+                        thrustPressed = x < canvas.width / 2;
+                    }
+                    afterburnerPressed = e.touches.length >= 2;
+                }
+            }, { passive: false });
         }
 
         function updateProjectiles() {
