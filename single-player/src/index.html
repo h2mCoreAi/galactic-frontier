@@ -5,18 +5,170 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Galactic Frontier</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        canvas { display: block; }
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+            height: 100vh;
+            display: flex;
+        }
+
+        /* Left sidebar for banner ads */
+        .left-sidebar {
+            width: 200px;
+            background: #111;
+            border-right: 2px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        /* Game canvas container */
+        .game-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+            height: 100vh;
+            width: auto;
+            max-width: calc(100vw - 400px); /* Account for both sidebars */
+        }
+
+        /* Right sidebar for top scores */
+        .right-sidebar {
+            width: 200px;
+            background: #111;
+            border-left: 2px solid #333;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        .right-sidebar h3 {
+            margin: 0 0 15px 0;
+            color: #00ff00;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        .score-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .score-name {
+            color: #fff;
+        }
+
+        .score-value {
+            color: #00ff00;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <!-- Left sidebar for banner advertisements -->
+    <div class="left-sidebar">
+        <div>
+            <div style="font-size: 16px; margin-bottom: 10px;">Advertisement</div>
+            <div style="font-size: 12px; opacity: 0.7;">Banner Space</div>
+        </div>
+    </div>
+
+    <!-- Game canvas container -->
+    <div class="game-container">
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <!-- Right sidebar for top scores -->
+    <div class="right-sidebar">
+        <h3>TOP SCORES</h3>
+        <div id="topScores">
+            <div class="score-item">
+                <span class="score-name">PLAYER 1</span>
+                <span class="score-value">250</span>
+            </div>
+            <div class="score-item">
+                <span class="score-name">PLAYER 2</span>
+                <span class="score-value">200</span>
+            </div>
+            <div class="score-item">
+                <span class="score-name">PLAYER 3</span>
+                <span class="score-value">180</span>
+            </div>
+            <div class="score-item">
+                <span class="score-name">PLAYER 4</span>
+                <span class="score-value">150</span>
+            </div>
+            <div class="score-item">
+                <span class="score-name">PLAYER 5</span>
+                <span class="score-value">120</span>
+            </div>
+        </div>
+    </div>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
         // Global config variable
         let config = null;
+
+        // Canvas resize function
+        function resizeCanvas() {
+            const viewportHeight = window.innerHeight;
+            const availableWidth = window.innerWidth - 400; // Subtract sidebar widths (200px each)
+
+            // Set canvas to full height and available width
+            canvas.width = Math.max(800, availableWidth); // Minimum width of 800px
+            canvas.height = viewportHeight;
+
+            // Update canvas style to match
+            canvas.style.width = canvas.width + 'px';
+            canvas.style.height = canvas.height + 'px';
+        }
+
+        // Initialize canvas size
+        resizeCanvas();
+
+        // Handle window resize
+        window.addEventListener('resize', resizeCanvas);
+
+        // Function to update top scores display
+        function updateTopScores(scores) {
+            const topScoresDiv = document.getElementById('topScores');
+            if (!topScoresDiv) return;
+
+            topScoresDiv.innerHTML = scores.map((score, index) => `
+                <div class="score-item">
+                    <span class="score-name">${score.name || `PLAYER ${index + 1}`}</span>
+                    <span class="score-value">${score.value || 0}</span>
+                </div>
+            `).join('');
+        }
+
+        // Initialize with placeholder scores
+        const placeholderScores = [
+            { name: 'PLAYER 1', value: 250 },
+            { name: 'PLAYER 2', value: 200 },
+            { name: 'PLAYER 3', value: 180 },
+            { name: 'PLAYER 4', value: 150 },
+            { name: 'PLAYER 5', value: 120 }
+        ];
+        updateTopScores(placeholderScores);
+
         let configLoaded = false;
 
         // Config loading function
@@ -167,17 +319,21 @@
             const rect = canvas.getBoundingClientRect();
             mouseX = e.clientX - rect.left;
             mouseY = e.clientY - rect.top;
+
+            // Ensure mouse coordinates stay within canvas bounds
+            mouseX = Math.max(0, Math.min(mouseX, canvas.width));
+            mouseY = Math.max(0, Math.min(mouseY, canvas.height));
         });
 
         canvas.addEventListener('mousedown', (e) => {
-            if (gameState === GAME_STATES.PLAYING && e.button === 2) { // Right mouse button
+            if (gameState === GAME_STATES.PLAYING && e.button === 0) { // Left mouse button
                 e.preventDefault(); // Prevent context menu
                 rightMousePressed = true;
             }
         });
 
         canvas.addEventListener('mouseup', (e) => {
-            if (gameState === GAME_STATES.PLAYING && e.button === 2) { // Right mouse button
+            if (gameState === GAME_STATES.PLAYING && e.button === 0) { // Left mouse button
                 rightMousePressed = false;
             }
         });
@@ -292,7 +448,7 @@
             ctx.fillText('Mouse Movement - Rotate Ship', canvas.width / 2, canvas.height / 2 - 10);
             ctx.fillText('W - Thrust Forward', canvas.width / 2, canvas.height / 2 + 10);
             ctx.fillText('Spacebar - Afterburner (Limited Energy)', canvas.width / 2, canvas.height / 2 + 30);
-            ctx.fillText('Right Mouse Button - Shoot', canvas.width / 2, canvas.height / 2 + 50);
+            ctx.fillText('Left Mouse Button - Shoot', canvas.width / 2, canvas.height / 2 + 50);
             ctx.fillText('P - Pause/Resume', canvas.width / 2, canvas.height / 2 + 70);
 
             // Start prompt
@@ -419,7 +575,7 @@
             universeX += Math.cos(ship.angle) * effectiveSpeed;
             universeY += Math.sin(ship.angle) * effectiveSpeed;
 
-            // Handle shooting (right mouse button)
+            // Handle shooting (left mouse button)
             if (rightMousePressed && ship.lastShot <= 0) {
                 projectiles.push({
                     universeX: universeX,
