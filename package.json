@@ -16,7 +16,12 @@
     "pm2:dev:stop": "pm2 stop ecosystem.dev.config.js",
     "pm2:dev:logs": "pm2 logs"
   },
-  "keywords": ["game", "space", "phaser", "vite"],
+  "keywords": [
+    "game",
+    "space",
+    "phaser",
+    "vite"
+  ],
   "author": "",
   "license": "ISC",
   "devDependencies": {
@@ -25,6 +30,19 @@
     "vite": "^5.0.0"
   },
   "dependencies": {
-    "phaser": "^3.70.0"
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.1.0",
+    "express-session": "^1.18.2",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "passport": "^0.7.0",
+    "passport-discord": "^0.1.4",
+    "pg": "^8.16.3",
+    "phaser": "^3.70.0",
+    "socket.io": "^4.8.1",
+    "winston": "^3.18.3"
   }
 }

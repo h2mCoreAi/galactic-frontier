@@ -159,23 +159,137 @@
             `).join('');
         }
 
-        // Score persistence functions
-        function saveHighScore(finalScore, level) {
+        // Score persistence functions - now supports both local and backend
+        let backendAvailable = false;
+        let currentSessionId = null;
+
+        // Check if backend is available
+        async function checkBackendAvailability() {
             try {
-                const highScores = getHighScores();
+                const response = await fetch('http://localhost:3001/health', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                backendAvailable = response.ok;
+                console.log('Backend available:', backendAvailable);
+            } catch (error) {
+                backendAvailable = false;
+                console.log('Backend not available, using local storage');
+            }
+        }
+
+        // Initialize session when game starts
+        async function initializeGameSession() {
+            if (backendAvailable) {
+                try {
+                    const headers = { 'Content-Type': 'application/json' };
+
+                    // Include JWT token if user is authenticated
+                    if (authToken) {
+                        headers['Authorization'] = `Bearer ${authToken}`;
+                    }
+
+                    const response = await fetch('http://localhost:3001/api/sessions/start', {
+                        method: 'POST',
+                        headers: headers,
+                        credentials: 'include'
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        currentSessionId = data.session_id;
+                        console.log('Session started:', currentSessionId);
+                    }
+                } catch (error) {
+                    console.error('Failed to start session:', error);
+                }
+            }
+        }
+
+        // End session when game ends
+        async function endGameSession(finalScore, levelReached, playTime, accuracy) {
+            if (backendAvailable && currentSessionId) {
+                try {
+                    const headers = { 'Content-Type': 'application/json' };
+
+                    // Include JWT token if user is authenticated
+                    if (authToken) {
+                        headers['Authorization'] = `Bearer ${authToken}`;
+                    }
+
+                    const response = await fetch(`http://localhost:3001/api/sessions/${currentSessionId}/end`, {
+                        method: 'PUT',
+                        headers: headers,
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            score: finalScore,
+                            level_reached: levelReached,
+                            play_time: playTime,
+                            accuracy: accuracy,
+                            enemies_defeated: 0 // TODO: track this
+                        })
+                    });
+
+                    if (response.ok) {
+                        console.log('Session ended successfully');
+                    }
+                } catch (error) {
+                    console.error('Failed to end session:', error);
+                }
+            }
+        }
+
+        async function saveHighScore(finalScore, level, playTime = 0, accuracy = 0) {
+            try {
+                // Always save to local storage as fallback
+                const localHighScores = getLocalHighScores();
                 const newScore = {
                     score: finalScore,
                     level: level,
                     timestamp: Date.now(),
-                    sessionId: Math.random().toString(36).substr(2, 9)
+                    sessionId: currentSessionId || Math.random().toString(36).substr(2, 9),
+                    playTime: playTime,
+                    accuracy: accuracy
                 };
 
-                highScores.push(newScore);
-                highScores.sort((a, b) => b.score - a.score);
-                highScores.splice(10); // Keep only top 10
+                localHighScores.push(newScore);
+                localHighScores.sort((a, b) => b.score - a.score);
+                localHighScores.splice(10); // Keep only top 10
+                localStorage.setItem('galacticFrontier_highScores', JSON.stringify(localHighScores));
 
-                localStorage.setItem('galacticFrontier_highScores', JSON.stringify(highScores));
-                console.log('High score saved:', newScore);
+                // Try to save to backend if available
+                if (backendAvailable) {
+                    try {
+                        const headers = { 'Content-Type': 'application/json' };
+
+                        // Include JWT token if user is authenticated
+                        if (authToken) {
+                            headers['Authorization'] = `Bearer ${authToken}`;
+                        }
+
+                        const response = await fetch('http://localhost:3001/api/highscores', {
+                            method: 'POST',
+                            headers: headers,
+                            credentials: 'include',
+                            body: JSON.stringify({
+                                score: finalScore,
+                                level_reached: level,
+                                play_time: playTime,
+                                accuracy: accuracy,
+                                session_id: currentSessionId
+                            })
+                        });
+
+                        if (response.ok) {
+                            console.log('High score saved to backend');
+                        } else {
+                            console.warn('Failed to save high score to backend:', response.status);
+                        }
+                    } catch (error) {
+                        console.warn('Backend save failed, using local storage only:', error);
+                    }
+                }
+
                 return true;
             } catch (error) {
                 console.error('Failed to save high score:', error);
@@ -183,14 +297,39 @@
             }
         }
 
-        function getHighScores() {
+        function getLocalHighScores() {
             try {
                 const stored = localStorage.getItem('galacticFrontier_highScores');
                 return stored ? JSON.parse(stored) : [];
             } catch (error) {
-                console.error('Failed to load high scores:', error);
+                console.error('Failed to load local high scores:', error);
                 return [];
             }
+        }
+
+        async function getHighScores() {
+            // Try to get from backend first, fallback to local
+            if (backendAvailable) {
+                try {
+                    const response = await fetch('http://localhost:3001/api/highscores?limit=10', {
+                        method: 'GET',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include'
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('Loaded high scores from backend');
+                        return data.highscores || [];
+                    }
+                } catch (error) {
+                    console.warn('Failed to load backend high scores:', error);
+                }
+            }
+
+            // Fallback to local storage
+            console.log('Using local high scores');
+            return getLocalHighScores();
         }
 
         function validateScoreData(score) {
@@ -203,10 +342,10 @@
         }
 
         // Initialize top scores display with saved high scores
-        function initializeTopScores() {
-            const highScores = getHighScores();
+        async function initializeTopScores() {
+            const highScores = await getHighScores();
             const displayScores = highScores.slice(0, 5).map((hs, index) => ({
-                name: `LEVEL ${hs.level}`,
+                name: hs.username ? hs.username : `LEVEL ${hs.level || 1}`,
                 value: hs.score
             }));
 
@@ -221,7 +360,10 @@
             updateTopScores(displayScores);
         }
 
-        initializeTopScores();
+        // Initialize top scores asynchronously
+        (async () => {
+            await initializeTopScores();
+        })();
 
         let configLoaded = false;
 
@@ -281,6 +423,142 @@
             }
         }
 
+        // Authentication functions
+        function initAuth() {
+            // Check for stored auth token on page load
+            const storedToken = localStorage.getItem('gf_auth_token');
+            if (storedToken) {
+                authToken = storedToken;
+                // Validate token by fetching user profile
+                fetchUserProfile();
+            }
+        }
+
+        async function fetchUserProfile() {
+            if (!authToken) return;
+
+            try {
+                const response = await fetch('http://localhost:3001/api/profile', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    currentUser = await response.json();
+                    isAuthenticated = true;
+                    console.log('User authenticated:', currentUser.username);
+                } else {
+                    // Token invalid, clear it
+                    logout();
+                }
+            } catch (error) {
+                console.error('Error fetching user profile:', error);
+                logout();
+            }
+        }
+
+        function loginWithDiscord() {
+            // Redirect to Discord OAuth
+            window.location.href = 'http://localhost:3001/auth/discord';
+        }
+
+        function logout() {
+            currentUser = null;
+            authToken = null;
+            isAuthenticated = false;
+            localStorage.removeItem('gf_auth_token');
+            gameState = GAME_STATES.START;
+        }
+
+        function handleAuthCallback() {
+            // Check URL for auth success/failure
+            const urlParams = new URLSearchParams(window.location.search);
+            const authSuccess = urlParams.get('auth_success');
+
+            if (authSuccess === 'true') {
+                // Get token from URL or localStorage (set by backend)
+                const token = localStorage.getItem('gf_auth_token');
+                if (token) {
+                    authToken = token;
+                    fetchUserProfile().then(() => {
+                        // Clear URL parameters
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        gameState = GAME_STATES.START;
+                    });
+                }
+            } else if (urlParams.get('error')) {
+                console.error('Authentication failed');
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
+
+        // Session analytics variables
+        let sessionData = [];
+        let sessionStats = {
+            totalSessions: 0,
+            totalScore: 0,
+            averageScore: 0,
+            bestScore: 0,
+            totalPlayTime: 0,
+            averageLevel: 0
+        };
+
+        // Session analytics functions
+        async function loadSessionData() {
+            sessionData = [];
+
+            // Load from localStorage first
+            const localSessions = JSON.parse(localStorage.getItem('galacticFrontier_sessions') || '[]');
+            sessionData.push(...localSessions);
+
+            // Try to load from backend if authenticated
+            if (backendAvailable && authToken) {
+                try {
+                    // For now, we'll simulate session data since we don't have a full sessions API
+                    // In production, this would fetch from /api/sessions/history
+                    console.log('Loading session data from backend...');
+                } catch (error) {
+                    console.error('Failed to load backend sessions:', error);
+                }
+            }
+
+            calculateSessionStats();
+        }
+
+        function calculateSessionStats() {
+            if (sessionData.length === 0) {
+                // Add some sample data for demonstration
+                sessionData = [
+                    {
+                        sessionId: 'sample_1',
+                        startTime: Date.now() - 3600000, // 1 hour ago
+                        endTime: Date.now() - 3540000,  // 59 minutes ago
+                        score: 1250,
+                        level: 7,
+                        playTime: 60,
+                        accuracy: 85.5
+                    },
+                    {
+                        sessionId: 'sample_2',
+                        startTime: Date.now() - 7200000, // 2 hours ago
+                        endTime: Date.now() - 7080000,  // ~2 hours ago
+                        score: 890,
+                        level: 5,
+                        playTime: 120,
+                        accuracy: 72.3
+                    }
+                ];
+            }
+
+            sessionStats.totalSessions = sessionData.length;
+            sessionStats.totalScore = sessionData.reduce((sum, s) => sum + s.score, 0);
+            sessionStats.averageScore = Math.round(sessionStats.totalScore / sessionStats.totalSessions);
+            sessionStats.bestScore = Math.max(...sessionData.map(s => s.score));
+            sessionStats.totalPlayTime = sessionData.reduce((sum, s) => sum + s.playTime, 0);
+            sessionStats.averageLevel = Math.round(sessionData.reduce((sum, s) => sum + s.level, 0) / sessionStats.totalSessions * 10) / 10;
+        }
+
         // Player ship
         const ship = {
             x: canvas.width / 2,
@@ -319,6 +597,9 @@
         // Explosions
         const explosions = [];
 
+        // Particle effects system
+        const particles = [];
+
         // Power-ups
         const powerUps = [];
         let healthPowerUpSpawnTimer = 0;
@@ -330,9 +611,17 @@
         let fanShotActive = false;
         let fanShotTimer = 0;
 
+        // Authentication variables
+        let currentUser = null;
+        let authToken = null;
+        let isAuthenticated = false;
+
         // Game states
         const GAME_STATES = {
             START: 'start',
+            AUTH: 'auth',
+            PROFILE: 'profile',
+            SESSIONS: 'sessions',
             PLAYING: 'playing',
             PAUSED: 'paused',
             GAME_OVER: 'gameOver'
@@ -345,6 +634,9 @@
         let bulletsHit = 0;
         let currentLevel = 1;
         let scoreToLevelUp = 500; // Will be replaced with config value
+        let gameStartTime = 0;
+        let gameEndTime = 0;
+        let enemiesDefeated = 0;
 
         // Score multiplier system
         let scoreMultiplier = 1.0;
@@ -356,6 +648,19 @@
         let scoreChangeIndicator = null;
         let scoreChangeTimer = 0;
         let lastDisplayedScore = 0;
+
+        // Fan-shot visual effect phase
+        let fanShotVisualPhase = 0;
+
+        // Audio system
+        let audioContext = null;
+        let audioEnabled = true;
+        let masterVolume = 0.7;
+        let musicVolume = 0.5;
+        let sfxVolume = 0.8;
+        let currentMusic = null;
+        let audioBuffers = {}; // Cache for loaded audio files
+        let activeAudio = []; // Track active audio instances
 
         // Apply config values to game variables
         function applyConfig() {
@@ -426,7 +731,33 @@
         document.addEventListener('keydown', (e) => {
             if (gameState === GAME_STATES.START) {
                 if (e.key === ' ' || e.key === 'Enter') {
+                    // Check if user is authenticated, if not go to auth screen
+                    if (isAuthenticated) {
+                        gameState = GAME_STATES.PROFILE;
+                    } else {
+                        gameState = GAME_STATES.AUTH;
+                    }
+                } else if (e.key === 'a' || e.key === 'A') {
+                    // Access session analytics
+                    loadSessionData();
+                    gameState = GAME_STATES.SESSIONS;
+                }
+            } else if (gameState === GAME_STATES.AUTH) {
+                if (e.key === ' ' || e.key === 'Enter') {
+                    loginWithDiscord();
+                } else if (e.key === 'Escape') {
+                    // Skip authentication and start game directly
                     startGame();
+                }
+            } else if (gameState === GAME_STATES.PROFILE) {
+                if (e.key === ' ' || e.key === 'Enter') {
+                    startGame();
+                } else if (e.key === 'l' || e.key === 'L') {
+                    logout();
+                    gameState = GAME_STATES.START;
+                } else if (e.key === 's' || e.key === 'S') {
+                    loadSessionData();
+                    gameState = GAME_STATES.SESSIONS;
                 }
             } else if (gameState === GAME_STATES.PLAYING || gameState === GAME_STATES.PAUSED) {
                 if (e.key === 'p' || e.key === 'P') {
@@ -440,6 +771,10 @@
                 }
             } else if (gameState === GAME_STATES.GAME_OVER) {
                 if (e.key === 'r' || e.key === 'R') {
+                    gameState = GAME_STATES.START;
+                }
+            } else if (gameState === GAME_STATES.SESSIONS) {
+                if (e.key === 'Escape') {
                     gameState = GAME_STATES.START;
                 }
             }
@@ -462,9 +797,16 @@
             });
         }
 
-        function startGame() {
+        async function startGame() {
             gameState = GAME_STATES.PLAYING;
+            gameStartTime = Date.now();
+
+            // Check backend availability and initialize session
+            await checkBackendAvailability();
+            await initializeGameSession();
+
             resetGame();
+            playBackgroundMusic();
         }
 
         function resetGame() {
@@ -477,10 +819,13 @@
             score = 0;
             bulletsFired = 0;
             bulletsHit = 0;
+            gameEndTime = 0;
+            enemiesDefeated = 0;
             projectiles.length = 0;
             enemyProjectiles.length = 0;
             enemies.length = 0;
             explosions.length = 0;
+            particles.length = 0;
             powerUps.length = 0;
             spawnTimer = 0;
             nextSpawn = Math.random() * (maxSpawnInterval - minSpawnInterval) + minSpawnInterval;
@@ -494,11 +839,24 @@
             gameState = GAME_STATES.PLAYING;
         }
 
-        function endGame() {
+        async function endGame() {
+            // Capture final play time when game ends
+            gameEndTime = Date.now();
+
+            // Stop background music
+            stopBackgroundMusic();
+
+            // Calculate final statistics
+            const playTime = Math.floor((gameEndTime - gameStartTime) / 1000);
+            const accuracy = bulletsFired > 0 ? ((bulletsHit / bulletsFired) * 100) : 0;
+
+            // End session with backend
+            await endGameSession(score, currentLevel, playTime, accuracy);
+
             // Save high score before ending game
             if (validateScoreData(score)) {
-                saveHighScore(score, currentLevel);
-                initializeTopScores(); // Refresh the top scores display
+                await saveHighScore(score, currentLevel, playTime, accuracy);
+                await initializeTopScores(); // Refresh the top scores display
             }
             gameState = GAME_STATES.GAME_OVER;
         }
@@ -548,13 +906,166 @@
             ctx.fillStyle = '#00ff00';
             ctx.fillText('Press SPACEBAR or ENTER to Start', canvas.width / 2, canvas.height / 2 + 100);
 
+            // Analytics option
+            ctx.font = '16px Arial';
+            ctx.fillStyle = 'cyan';
+            ctx.fillText('Press A for Session Analytics', canvas.width / 2, canvas.height / 2 + 130);
+
             // Version/Config info
             ctx.font = '12px Arial';
             ctx.fillStyle = 'gray';
-            ctx.textAlign = 'left';
-            ctx.fillText('Phase 1: Core Game Mechanics', 10, canvas.height - 20);
             ctx.textAlign = 'right';
             ctx.fillText('Configuration Loaded', canvas.width - 10, canvas.height - 20);
+        }
+
+        function drawAuthScreen() {
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw stars
+            ctx.fillStyle = 'white';
+            stars.forEach(star => {
+                const screenX = star.universeX - universeX + canvas.width / 2;
+                const screenY = star.universeY - universeY + canvas.height / 2;
+                if (screenX >= 0 && screenX <= canvas.width && screenY >= 0 && screenY <= canvas.height) {
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, star.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            // Title
+            ctx.fillStyle = 'white';
+            ctx.font = '48px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('GALACTIC FRONTIER', canvas.width / 2, canvas.height / 2 - 100);
+
+            // Auth prompt
+            ctx.font = '24px Arial';
+            ctx.fillStyle = '#7289da';
+            ctx.fillText('Login with Discord', canvas.width / 2, canvas.height / 2 - 20);
+            ctx.font = '16px Arial';
+            ctx.fillStyle = 'white';
+            ctx.fillText('Submit scores to global leaderboards', canvas.width / 2, canvas.height / 2 + 10);
+            ctx.fillText('Track your progress across sessions', canvas.width / 2, canvas.height / 2 + 30);
+
+            // Login button visual
+            ctx.fillStyle = '#7289da';
+            ctx.fillRect(canvas.width / 2 - 100, canvas.height / 2 + 60, 200, 40);
+            ctx.fillStyle = 'white';
+            ctx.font = '18px Arial';
+            ctx.fillText('Login with Discord', canvas.width / 2, canvas.height / 2 + 85);
+
+            // Skip option
+            ctx.font = '14px Arial';
+            ctx.fillStyle = 'gray';
+            ctx.fillText('Press ESC to play without login', canvas.width / 2, canvas.height / 2 + 120);
+        }
+
+        function drawProfileScreen() {
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw stars
+            ctx.fillStyle = 'white';
+            stars.forEach(star => {
+                const screenX = star.universeX - universeX + canvas.width / 2;
+                const screenY = star.universeY - universeY + canvas.height / 2;
+                if (screenX >= 0 && screenX <= canvas.width && screenY >= 0 && screenY <= canvas.height) {
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, star.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            // Title
+            ctx.fillStyle = 'white';
+            ctx.font = '48px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('GALACTIC FRONTIER', canvas.width / 2, canvas.height / 2 - 100);
+
+            // User info
+            if (currentUser) {
+                ctx.font = '24px Arial';
+                ctx.fillStyle = '#00ff00';
+                ctx.fillText(`Welcome, ${currentUser.username}!`, canvas.width / 2, canvas.height / 2 - 20);
+
+                ctx.font = '16px Arial';
+                ctx.fillStyle = 'white';
+                ctx.fillText(`Level: ${currentUser.level || 1}`, canvas.width / 2, canvas.height / 2 + 10);
+                ctx.fillText(`Total Score: ${currentUser.total_score || 0}`, canvas.width / 2, canvas.height / 2 + 30);
+            }
+
+            // Continue prompt
+            ctx.font = '20px Arial';
+            ctx.fillStyle = '#00ff00';
+            ctx.fillText('Press SPACEBAR or ENTER to Start', canvas.width / 2, canvas.height / 2 + 80);
+
+            // Logout option
+            ctx.font = '14px Arial';
+            ctx.fillStyle = 'gray';
+            ctx.fillText('Press L to logout', canvas.width / 2, canvas.height / 2 + 110);
+        }
+
+        function drawSessionsScreen() {
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw stars
+            ctx.fillStyle = 'white';
+            stars.forEach(star => {
+                const screenX = star.universeX - universeX + canvas.width / 2;
+                const screenY = star.universeY - universeY + canvas.height / 2;
+                if (screenX >= 0 && screenX <= canvas.width && screenY >= 0 && screenY <= canvas.height) {
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, star.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            // Title
+            ctx.fillStyle = 'white';
+            ctx.font = '36px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('SESSION ANALYTICS', canvas.width / 2, 50);
+
+            // Stats display
+            ctx.font = '18px Arial';
+            ctx.textAlign = 'left';
+            let yPos = 100;
+
+            ctx.fillText(`Total Sessions: ${sessionStats.totalSessions}`, 50, yPos);
+            yPos += 30;
+            ctx.fillText(`Best Score: ${sessionStats.bestScore.toLocaleString()}`, 50, yPos);
+            yPos += 30;
+            ctx.fillText(`Average Score: ${sessionStats.averageScore.toLocaleString()}`, 50, yPos);
+            yPos += 30;
+            ctx.fillText(`Average Level: ${sessionStats.averageLevel}`, 50, yPos);
+            yPos += 30;
+            ctx.fillText(`Total Play Time: ${Math.floor(sessionStats.totalPlayTime / 60)}m ${sessionStats.totalPlayTime % 60}s`, 50, yPos);
+
+            // Recent sessions
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Recent Sessions', canvas.width / 2, yPos + 50);
+
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'left';
+            yPos += 80;
+
+            // Show last 3 sessions
+            const recentSessions = sessionData.slice(-3).reverse();
+            recentSessions.forEach((session, index) => {
+                const sessionTime = new Date(session.startTime).toLocaleString();
+                ctx.fillText(`${index + 1}. ${sessionTime} - Score: ${session.score.toLocaleString()} - Level: ${session.level}`, 50, yPos);
+                yPos += 25;
+            });
+
+            // Navigation
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#00ff00';
+            ctx.fillText('Press ESC to return to menu', canvas.width / 2, canvas.height - 30);
         }
 
         function drawPauseScreen() {
@@ -641,6 +1152,7 @@
                 size: type.size,
                 points: type.points,
                 type: type.type,
+                shootInterval: type.shootInterval,
                 shootTimer: Math.random() * type.shootInterval,
                 projectileDamage: type.projectileDamage * levelMultiplier, // Scaled projectile damage
                 collisionDamage: type.collisionDamage * healthMultiplier, // Scaled collision damage
@@ -656,6 +1168,8 @@
             // Handle thrust (W key)
             if (thrustPressed) {
                 ship.speed = Math.min(ship.speed + ship.thrust, ship.maxSpeed);
+                // Play thruster sound periodically (not every frame)
+                if (Math.random() < 0.3) playThrusterSound();
             } else {
                 ship.speed = Math.max(ship.speed - ship.thrust / 2, 0);
             }
@@ -665,6 +1179,8 @@
             if (afterburnerPressed && ship.afterburnerEnergy > 0) {
                 effectiveSpeed *= config.ship.afterburnerBoost;
                 ship.afterburnerEnergy = Math.max(0, ship.afterburnerEnergy - config.ship.afterburnerDepleteRate);
+                // Play afterburner sound periodically (not every frame)
+                if (Math.random() < 0.4) playAfterburnerSound();
             } else if (ship.afterburnerEnergy < config.ship.afterburnerMax) {
                 ship.afterburnerEnergy = Math.min(config.ship.afterburnerMax, ship.afterburnerEnergy + config.ship.afterburnerRegenRate);
             }
@@ -673,33 +1189,34 @@
             universeY += Math.sin(ship.angle) * effectiveSpeed;
 
             // Handle shooting (left mouse button)
-            if (leftMousePressed && ship.lastShot <= 0) {
-                if (fanShotActive) {
-                    // Fan-shot: fire 10 projectiles in a spread pattern
-                    const spreadAngle = config.projectiles.fanShotAngle; // 0.1047 radians (6 degrees)
-                    const halfSpread = (config.projectiles.fanShotCount - 1) * spreadAngle / 2;
-                    for (let i = 0; i < config.projectiles.fanShotCount; i++) {
-                        const angle = ship.angle - halfSpread + (i * spreadAngle);
+                if (leftMousePressed && ship.lastShot <= 0) {
+                    if (fanShotActive) {
+                        // Fan-shot: fire 10 projectiles in a spread pattern
+                        const spreadAngle = config.projectiles.fanShotAngle; // 0.1047 radians (6 degrees)
+                        const halfSpread = (config.projectiles.fanShotCount - 1) * spreadAngle / 2;
+                        for (let i = 0; i < config.projectiles.fanShotCount; i++) {
+                            const angle = ship.angle - halfSpread + (i * spreadAngle);
+                            projectiles.push({
+                                universeX: universeX,
+                                universeY: universeY,
+                                angle: angle,
+                                life: projectileLife
+                            });
+                        }
+                        bulletsFired += config.projectiles.fanShotCount;
+                    } else {
+                        // Normal shot: single projectile
                         projectiles.push({
                             universeX: universeX,
                             universeY: universeY,
-                            angle: angle,
+                            angle: ship.angle,
                             life: projectileLife
                         });
+                        bulletsFired++;
                     }
-                    bulletsFired += config.projectiles.fanShotCount;
-                } else {
-                    // Normal shot: single projectile
-                    projectiles.push({
-                        universeX: universeX,
-                        universeY: universeY,
-                        angle: ship.angle,
-                        life: projectileLife
-                    });
-                    bulletsFired++;
+                    ship.lastShot = projectileCooldown;
+                    playShootSound();
                 }
-                ship.lastShot = projectileCooldown;
-            }
             if (ship.lastShot > 0) ship.lastShot--;
         }
 
@@ -768,6 +1285,11 @@
             // Player projectiles
             for (let i = projectiles.length - 1; i >= 0; i--) {
                 const p = projectiles[i];
+                // Create trail particles for player projectiles
+                if (Math.random() < 0.3) { // 30% chance to create trail particle
+                    createTrailParticles(p.universeX, p.universeY, '#ffffff', 1);
+                }
+
                 p.universeX += Math.cos(p.angle) * projectileSpeed;
                 p.universeY += Math.sin(p.angle) * projectileSpeed;
                 p.life--;
@@ -780,22 +1302,22 @@
                     const e = enemies[j];
                     const dist = Math.hypot(p.universeX - e.universeX, p.universeY - e.universeY);
                     if (dist < e.size) {
-                        explosions.push({
-                            universeX: e.universeX,
-                            universeY: e.universeY,
-                            radius: 0,
-                            life: 20
-                        });
+                        // Create explosion particles instead of old explosion system
+                        const explosionColor = e.type === 'small' ? '#ff6600' : e.type === 'medium' ? '#ffaa00' : '#ff4444';
+                        createExplosionParticles(e.universeX, e.universeY, explosionColor, 12);
+
                         addScore(e.points, e.type);
                         bulletsHit++;
+                        enemiesDefeated++;
                         enemies.splice(j, 1);
                         projectiles.splice(i, 1);
+                        playExplosionSound();
                         // Check for level-up
-                        if (score >= scoreToLevelUp) {
+                        if (score >= scoreToLevelUp * currentLevel) {
                             currentLevel++;
-                            score = 0; // Reset score for new level
                             enemies.length = 0; // Clear enemies
                             enemyProjectiles.length = 0; // Clear enemy projectiles
+                            particles.length = 0; // Clear particles on level up
                             // Reset combo on level up
                             comboCount = 0;
                             scoreMultiplier = 1.0;
@@ -929,16 +1451,13 @@
                         damage: e.projectileDamage
                     });
                     e.shootTimer = 0;
+                    playEnemyShootSound();
                 }
 
                 const dist = Math.hypot(e.universeX - universeX, e.universeY - universeY);
                 if (dist < e.size + ship.size) {
-                    explosions.push({
-                        universeX: e.universeX,
-                        universeY: e.universeY,
-                        radius: 0,
-                        life: 20
-                    });
+                    // Create explosion particles for enemy collision
+                    createExplosionParticles(e.universeX, e.universeY, '#ff4444', 8);
                     ship.currentHealth = Math.max(0, ship.currentHealth - e.collisionDamage);
                     enemies.splice(i, 1);
                     if (ship.currentHealth <= 0) endGame();
@@ -969,6 +1488,210 @@
                 size: 8,
                 life: 600 // Power-ups disappear after 600 frames
             });
+        }
+
+        // Particle effects system
+        function createExplosionParticles(x, y, color = '#ffff00', count = 8) {
+            for (let i = 0; i < count; i++) {
+                const angle = (Math.PI * 2 * i) / count;
+                const speed = 2 + Math.random() * 3;
+                particles.push({
+                    universeX: x,
+                    universeY: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    life: 30 + Math.random() * 20,
+                    maxLife: 50,
+                    size: 2 + Math.random() * 2,
+                    color: color,
+                    type: 'explosion'
+                });
+            }
+        }
+
+        function createTrailParticles(x, y, color = '#ffffff', count = 2) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    universeX: x + (Math.random() - 0.5) * 4,
+                    universeY: y + (Math.random() - 0.5) * 4,
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: (Math.random() - 0.5) * 0.5,
+                    life: 15 + Math.random() * 10,
+                    maxLife: 25,
+                    size: 1 + Math.random(),
+                    color: color,
+                    type: 'trail'
+                });
+            }
+        }
+
+        function updateParticles() {
+            if (gameState !== GAME_STATES.PLAYING || !configLoaded) return;
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.universeX += p.vx;
+                p.universeY += p.vy;
+                p.life--;
+
+                // Apply gravity to explosion particles
+                if (p.type === 'explosion') {
+                    p.vy += 0.1; // Slight gravity
+                    p.vx *= 0.98; // Air resistance
+                    p.vy *= 0.98;
+                }
+
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        // Audio system functions
+        function initAudio() {
+            try {
+                // Create audio context
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    audioContext = new AudioContext();
+                    console.log('Audio system initialized');
+                } else {
+                    console.warn('Web Audio API not supported, using fallback');
+                    audioEnabled = false;
+                }
+            } catch (error) {
+                console.warn('Audio initialization failed:', error);
+                audioEnabled = false;
+            }
+        }
+
+        async function loadAudioBuffer(url) {
+            if (!audioEnabled || !audioContext) return null;
+
+            try {
+                if (audioBuffers[url]) {
+                    return audioBuffers[url];
+                }
+
+                const response = await fetch(url);
+                const arrayBuffer = await response.arrayBuffer();
+                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                audioBuffers[url] = audioBuffer;
+                return audioBuffer;
+            } catch (error) {
+                console.warn('Failed to load audio:', url, error);
+                return null;
+            }
+        }
+
+        function playSound(buffer, volume = 1.0, loop = false) {
+            if (!audioEnabled || !audioContext || !buffer) return null;
+
+            try {
+                const source = audioContext.createBufferSource();
+                const gainNode = audioContext.createGain();
+
+                source.buffer = buffer;
+                source.loop = loop;
+
+                // Set volume
+                gainNode.gain.value = volume * masterVolume * (loop ? musicVolume : sfxVolume);
+
+                source.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                source.start();
+
+                // Track active audio for cleanup
+                const audioInstance = { source, gainNode, loop };
+                activeAudio.push(audioInstance);
+
+                // Remove from tracking when done (for non-looping sounds)
+                if (!loop) {
+                    source.onended = () => {
+                        const index = activeAudio.indexOf(audioInstance);
+                        if (index > -1) activeAudio.splice(index, 1);
+                    };
+                }
+
+                return audioInstance;
+            } catch (error) {
+                console.warn('Failed to play sound:', error);
+                return null;
+            }
+        }
+
+        function stopSound(audioInstance) {
+            if (!audioInstance) return;
+
+            try {
+                audioInstance.source.stop();
+            } catch (error) {
+                // Sound might already be stopped
+            }
+
+            const index = activeAudio.indexOf(audioInstance);
+            if (index > -1) activeAudio.splice(index, 1);
+        }
+
+        function setMasterVolume(volume) {
+            masterVolume = Math.max(0, Math.min(1, volume));
+            updateAudioVolumes();
+        }
+
+        function setMusicVolume(volume) {
+            musicVolume = Math.max(0, Math.min(1, volume));
+            updateAudioVolumes();
+        }
+
+        function setSFXVolume(volume) {
+            sfxVolume = Math.max(0, Math.min(1, volume));
+            updateAudioVolumes();
+        }
+
+        function updateAudioVolumes() {
+            activeAudio.forEach(audioInstance => {
+                const targetVolume = audioInstance.loop ? musicVolume : sfxVolume;
+                audioInstance.gainNode.gain.value = targetVolume * masterVolume;
+            });
+        }
+
+        function stopAllAudio() {
+            activeAudio.forEach(audioInstance => {
+                try {
+                    audioInstance.source.stop();
+                } catch (error) {
+                    // Ignore errors for already stopped sounds
+                }
+            });
+            activeAudio.length = 0;
+            currentMusic = null;
+        }
+
+        // Fallback audio system using HTML5 Audio for browsers without Web Audio API
+        function playSoundFallback(url, volume = 1.0, loop = false) {
+            if (!audioEnabled) return null;
+
+            try {
+                const audio = new Audio(url);
+                audio.volume = volume * masterVolume * (loop ? musicVolume : sfxVolume);
+                audio.loop = loop;
+
+                audio.play().catch(error => {
+                    console.warn('Fallback audio playback failed:', error);
+                });
+
+                if (!loop) {
+                    audio.onended = () => {
+                        // Cleanup handled automatically
+                    };
+                }
+
+                return audio;
+            } catch (error) {
+                console.warn('Fallback audio failed:', error);
+                return null;
+            }
         }
 
         function updateScoreMultiplier() {
@@ -1078,11 +1801,13 @@
                     if (p.type === 'health') {
                         ship.currentHealth = Math.min(config.ship.maxHealth, ship.currentHealth + config.game.healthPowerUpValue);
                         console.log('Health power-up collected! +10 HP');
+                        playPowerUpSound();
                     } else if (p.type === 'fanShot') {
                         // Prevent stacking - reset timer if already active
                         fanShotActive = true;
                         fanShotTimer = config.game.fanShotDuration;
                         console.log('Fan-shot power-up collected! Multi-shot active for 10 seconds');
+                        playPowerUpSound();
                     }
                     powerUps.splice(i, 1);
                     continue;
@@ -1098,6 +1823,21 @@
         function draw() {
             if (gameState === GAME_STATES.START) {
                 drawStartScreen();
+                return;
+            }
+
+            if (gameState === GAME_STATES.AUTH) {
+                drawAuthScreen();
+                return;
+            }
+
+            if (gameState === GAME_STATES.PROFILE) {
+                drawProfileScreen();
+                return;
+            }
+
+            if (gameState === GAME_STATES.SESSIONS) {
+                drawSessionsScreen();
                 return;
             }
 
@@ -1224,7 +1964,7 @@
                 }
             });
 
-            // Draw explosions
+            // Draw explosions (legacy system for compatibility)
             ctx.strokeStyle = 'yellow';
             explosions.forEach(exp => {
                 const screenX = exp.universeX - universeX + canvas.width / 2;
@@ -1233,6 +1973,22 @@
                     ctx.beginPath();
                     ctx.arc(screenX, screenY, exp.radius, 0, Math.PI * 2);
                     ctx.stroke();
+                }
+            });
+
+            // Draw particles
+            particles.forEach(p => {
+                const screenX = p.universeX - universeX + canvas.width / 2;
+                const screenY = p.universeY - universeY + canvas.height / 2;
+                if (screenX >= 0 && screenX <= canvas.width && screenY >= 0 && screenY <= canvas.height) {
+                    const alpha = p.life / p.maxLife;
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
                 }
             });
 
@@ -1262,15 +2018,63 @@
                 ctx.fillStyle = 'white';
                 ctx.fill();
                 ctx.restore();
+
+                // Fan-shot active visual effect: pulsing ring + rotating orbs
+                if (fanShotActive) {
+                    ctx.save();
+                    ctx.translate(ship.x, ship.y);
+
+                    // Calculate time remaining ratio (0-1, where 1 is full time)
+                    const timeRatio = fanShotTimer / config.game.fanShotDuration;
+
+                    // Ring fades and shrinks dramatically as time runs out
+                    const pulse = (Math.sin(fanShotVisualPhase * (0.5 + 0.5 * timeRatio)) + 1) * 0.5; // Slower pulsing as time runs out
+                    const baseRingRadius = ship.size * 1.4;
+                    const maxRingSize = ship.size * 0.8; // Maximum additional size
+                    const ringRadius = baseRingRadius + (maxRingSize * pulse * timeRatio); // Scales down dramatically as time runs out
+
+                    // Color shifts from bright magenta to faded as time runs out
+                    const alpha = 0.3 + (0.4 * timeRatio); // More transparent as time runs out
+                    const saturation = timeRatio * 255; // Less saturated as time runs out
+                    ctx.strokeStyle = `rgba(${255}, ${0}, ${saturation | 0}, ${alpha})`;
+                    ctx.lineWidth = 1 + timeRatio; // Thinner as time runs out
+                    ctx.beginPath();
+                    ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // Rotating orbs - fewer orbs as time runs out
+                    const maxOrbCount = 6;
+                    const orbCount = Math.ceil(maxOrbCount * timeRatio);
+                    const orbitRadius = ship.size * (1.7 - 0.2 * (1 - timeRatio)); // Closer to ship as time runs out
+
+                    for (let i = 0; i < orbCount; i++) {
+                        const a = fanShotVisualPhase + (i * (Math.PI * 2 / orbCount));
+                        const ox = Math.cos(a) * orbitRadius;
+                        const oy = Math.sin(a) * orbitRadius;
+                        const orbAlpha = 0.4 + (0.4 * timeRatio); // Orbs fade as time runs out
+                        const orbSaturation = timeRatio * 255;
+                        ctx.fillStyle = `rgba(${255}, ${0}, ${orbSaturation | 0}, ${orbAlpha})`;
+                        ctx.beginPath();
+                        ctx.arc(ox, oy, (2 + 1.5 * pulse) * timeRatio, 0, Math.PI * 2); // Smaller orbs as time runs out
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                }
             }
 
             // Draw scoreboard and UI (only during gameplay)
             if (gameState === GAME_STATES.PLAYING) {
-                // Top HUD - Score and Level centered
+                // Top HUD - Score (top-left), Level (top-center)
+                // Score display (top-left)
                 ctx.fillStyle = 'white';
+                ctx.font = '18px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText(`SCORE: ${score.toLocaleString()}`, 15, 30);
+
+                // Level indicator (top-center)
                 ctx.font = '20px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText(`LEVEL ${currentLevel}     SCORE ${score}/${scoreToLevelUp}`, canvas.width / 2, 25);
+                ctx.fillText(`LEVEL ${currentLevel}`, canvas.width / 2, 30);
 
                 // Draw score change indicator
                 if (scoreChangeIndicator) {
@@ -1291,20 +2095,24 @@
                     ctx.fillStyle = '#ffff00';
                     ctx.font = '14px Arial';
                     ctx.textAlign = 'center';
-                    ctx.fillText(`${comboCount}x COMBO!`, canvas.width / 2, 50);
+                    ctx.fillText(`${comboCount}x COMBO!`, canvas.width / 2, 55);
                 }
 
-                // Top bars - Health and Afterburner side by side
-                const barWidth = 150;
-                const barHeight = 16;
-                const barY = 40;
+                // Bottom HUD bars - Health (bottom-left), Afterburner (bottom-center), Hit % (bottom-right)
+                const barWidth = 140;
+                const barHeight = 18;
+                const bottomBarY = canvas.height - 35;
 
-                // Health bar (left side)
+                // Health bar (bottom-left)
                 const healthPercent = ship.currentHealth / config.ship.maxHealth;
-                const healthBarX = 10;
+                const healthBarX = 15;
+
+                // Health bar background
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(healthBarX - 2, bottomBarY - 2, barWidth + 4, barHeight + 4);
 
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-                ctx.fillRect(healthBarX, barY, barWidth, barHeight);
+                ctx.fillRect(healthBarX, bottomBarY, barWidth, barHeight);
 
                 let healthColor;
                 if (healthPercent > 0.6) healthColor = '#00ff00'; // Green
@@ -1312,24 +2120,29 @@
                 else healthColor = '#ff0000'; // Red
 
                 ctx.fillStyle = healthColor;
-                ctx.fillRect(healthBarX, barY, barWidth * healthPercent, barHeight);
+                ctx.fillRect(healthBarX, bottomBarY, barWidth * healthPercent, barHeight);
 
                 ctx.strokeStyle = 'white';
                 ctx.lineWidth = 1;
-                ctx.strokeRect(healthBarX, barY, barWidth, barHeight);
+                ctx.strokeRect(healthBarX, bottomBarY, barWidth, barHeight);
 
-                // Health label
+                // Health label and value
                 ctx.fillStyle = 'white';
-                ctx.font = '12px Arial';
+                ctx.font = '11px Arial';
                 ctx.textAlign = 'left';
-                ctx.fillText(`HEALTH ${ship.currentHealth.toFixed(0)}/${config.ship.maxHealth}`, healthBarX, barY - 3);
+                ctx.fillText('HEALTH', healthBarX, bottomBarY - 5);
+                ctx.fillText(`${ship.currentHealth.toFixed(0)}/${config.ship.maxHealth}`, healthBarX, bottomBarY + barHeight + 12);
 
-                // Afterburner bar (right side)
+                // Afterburner bar (bottom-center)
                 const energyPercent = ship.afterburnerEnergy / config.ship.afterburnerMax;
-                const energyBarX = canvas.width - barWidth - 10;
+                const energyBarX = canvas.width / 2 - barWidth / 2;
+
+                // Afterburner bar background
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(energyBarX - 2, bottomBarY - 2, barWidth + 4, barHeight + 4);
 
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-                ctx.fillRect(energyBarX, barY, barWidth, barHeight);
+                ctx.fillRect(energyBarX, bottomBarY, barWidth, barHeight);
 
                 let energyColor;
                 if (energyPercent > 0.6) energyColor = '#ffffff'; // White
@@ -1337,58 +2150,143 @@
                 else energyColor = '#0000ff'; // Blue
 
                 ctx.fillStyle = energyColor;
-                ctx.fillRect(energyBarX, barY, barWidth * energyPercent, barHeight);
+                ctx.fillRect(energyBarX, bottomBarY, barWidth * energyPercent, barHeight);
 
                 ctx.strokeStyle = 'white';
                 ctx.lineWidth = 1;
-                ctx.strokeRect(energyBarX, barY, barWidth, barHeight);
+                ctx.strokeRect(energyBarX, bottomBarY, barWidth, barHeight);
 
-                // Afterburner label
+                // Afterburner label and value
                 ctx.fillStyle = 'white';
-                ctx.font = '12px Arial';
+                ctx.font = '11px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('AFTERBURNER', energyBarX + barWidth / 2, bottomBarY - 5);
+                ctx.fillText(`${ship.afterburnerEnergy.toFixed(0)}/${config.ship.afterburnerMax}`, energyBarX + barWidth / 2, bottomBarY + barHeight + 12);
+
+                // Hit percentage display (bottom-right)
+                const hitPercentage = bulletsFired > 0 ? ((bulletsHit / bulletsFired) * 100) : 0;
+                const hitBarX = canvas.width - barWidth - 15;
+
+                // Hit percentage bar background
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(hitBarX - 2, bottomBarY - 2, barWidth + 4, barHeight + 4);
+
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.fillRect(hitBarX, bottomBarY, barWidth, barHeight);
+
+                // Color based on hit percentage
+                let hitColor;
+                if (hitPercentage >= 80) hitColor = '#00ff00'; // Green - excellent
+                else if (hitPercentage >= 60) hitColor = '#ffff00'; // Yellow - good
+                else if (hitPercentage >= 40) hitColor = '#ff8800'; // Orange - average
+                else hitColor = '#ff0000'; // Red - poor
+
+                ctx.fillStyle = hitColor;
+                ctx.fillRect(hitBarX, bottomBarY, barWidth * (hitPercentage / 100), barHeight);
+
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(hitBarX, bottomBarY, barWidth, barHeight);
+
+                // Hit percentage label and value
+                ctx.fillStyle = 'white';
+                ctx.font = '11px Arial';
                 ctx.textAlign = 'right';
-                ctx.fillText(`AFTERBURNER ${ship.afterburnerEnergy.toFixed(0)}/${config.ship.afterburnerMax}`, energyBarX + barWidth, barY - 3);
-
-                // Fan-shot indicator (when active)
-                if (fanShotActive) {
-                    const fanShotBarY = barY + 25;
-                    const fanShotPercent = fanShotTimer / config.game.fanShotDuration;
-                    const fanShotBarX = 10;
-                    const fanShotWidth = 80;
-
-                    ctx.fillStyle = 'rgba(255, 0, 255, 0.3)';
-                    ctx.fillRect(fanShotBarX, fanShotBarY, fanShotWidth, barHeight);
-
-                    ctx.fillStyle = '#ff00ff';
-                    ctx.fillRect(fanShotBarX, fanShotBarY, fanShotWidth * fanShotPercent, barHeight);
-
-                    ctx.strokeStyle = 'white';
-                    ctx.lineWidth = 1;
-                    ctx.strokeRect(fanShotBarX, fanShotBarY, fanShotWidth, barHeight);
-
-                    ctx.fillStyle = 'white';
-                    ctx.font = '10px Arial';
-                    ctx.textAlign = 'left';
-                    ctx.fillText(`FAN-SHOT ${(fanShotTimer / 60).toFixed(1)}s`, fanShotBarX, fanShotBarY - 3);
-                }
-
-                // Bottom stats
-                ctx.fillStyle = 'white';
-                ctx.font = '14px Arial';
-                ctx.textAlign = 'left';
-                ctx.fillText(`SHOTS: ${bulletsFired}`, 10, canvas.height - 30);
-                ctx.fillText(`ACCURACY: ${bulletsFired > 0 ? ((bulletsHit / bulletsFired) * 100).toFixed(1) : 0}%`, 10, canvas.height - 10);
+                ctx.fillText('ACCURACY', hitBarX + barWidth, bottomBarY - 5);
+                ctx.fillText(`${hitPercentage.toFixed(1)}%`, hitBarX + barWidth, bottomBarY + barHeight + 12);
             }
 
-            // Game over
+            // Game over screen with comprehensive statistics
             if (gameState === GAME_STATES.GAME_OVER) {
-                ctx.fillStyle = 'red';
-                ctx.font = '40px Arial';
+                // Semi-transparent background overlay
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Main game over title
+                ctx.fillStyle = '#ff4444';
+                ctx.font = 'bold 48px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText('Game Over', canvas.width / 2, canvas.height / 2);
-                ctx.font = '20px Arial';
-                ctx.fillText(`Final Score: ${score} (Level ${currentLevel})`, canvas.width / 2, canvas.height / 2 + 40);
-                ctx.fillText('Press R to Return to Main Menu', canvas.width / 2, canvas.height / 2 + 80);
+                ctx.fillText('GAME OVER', canvas.width / 2, 120);
+
+                // Final score display
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 36px Arial';
+                ctx.fillText(`FINAL SCORE: ${score.toLocaleString()}`, canvas.width / 2, 180);
+
+                // Level reached
+                ctx.fillStyle = '#ffff00';
+                ctx.font = 'bold 24px Arial';
+                ctx.fillText(`LEVEL REACHED: ${currentLevel}`, canvas.width / 2, 220);
+
+                // Statistics section
+                const statsY = 280;
+                ctx.fillStyle = '#cccccc';
+                ctx.font = 'bold 20px Arial';
+                ctx.fillText('STATISTICS', canvas.width / 2, statsY);
+
+                // Calculate statistics
+                const accuracy = bulletsFired > 0 ? ((bulletsHit / bulletsFired) * 100) : 0;
+                const totalShots = bulletsFired;
+                const hits = bulletsHit;
+                const playTime = Math.floor((gameEndTime - gameStartTime) / 1000); // in seconds
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '18px Arial';
+                ctx.textAlign = 'left';
+
+                // Left column
+                const leftX = canvas.width / 2 - 150;
+                ctx.fillText(`Total Shots: ${totalShots}`, leftX, statsY + 40);
+                ctx.fillText(`Hits: ${hits}`, leftX, statsY + 65);
+                ctx.fillText(`Accuracy: ${accuracy.toFixed(1)}%`, leftX, statsY + 90);
+
+                // Right column
+                const rightX = canvas.width / 2 + 50;
+                ctx.fillText(`Play Time: ${Math.floor(playTime / 60)}:${(playTime % 60).toString().padStart(2, '0')}`, rightX, statsY + 40);
+                ctx.fillText(`Enemies Defeated: ${enemiesDefeated}`, rightX, statsY + 65);
+
+                // Performance rating based on accuracy
+                let rating, ratingColor;
+                if (accuracy >= 90) {
+                    rating = 'LEGENDARY PILOT';
+                    ratingColor = '#ffdd00';
+                } else if (accuracy >= 80) {
+                    rating = 'ACE PILOT';
+                    ratingColor = '#00ff00';
+                } else if (accuracy >= 70) {
+                    rating = 'SKILLED PILOT';
+                    ratingColor = '#0088ff';
+                } else if (accuracy >= 60) {
+                    rating = 'ADEPT PILOT';
+                    ratingColor = '#ffff00';
+                } else if (accuracy >= 40) {
+                    rating = 'NOVICE PILOT';
+                    ratingColor = '#ff8800';
+                } else {
+                    rating = 'RECRUIT';
+                    ratingColor = '#ff4444';
+                }
+
+                ctx.fillStyle = ratingColor;
+                ctx.font = 'bold 22px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(`RATING: ${rating}`, canvas.width / 2, statsY + 140);
+
+                // Restart instructions with blinking effect
+                const blink = Math.sin(Date.now() * 0.01) > 0;
+                if (blink) {
+                    ctx.fillStyle = '#00ff00';
+                    ctx.font = 'bold 20px Arial';
+                    ctx.fillText('PRESS R TO RETURN TO MAIN MENU', canvas.width / 2, canvas.height - 60);
+                }
+
+                // High score notification (simplified - will be checked when saving)
+                const isHighScore = true; // We'll handle this in the saveHighScore function
+                if (isHighScore && score > 0) {
+                    ctx.fillStyle = '#ffff00';
+                    ctx.font = 'bold 24px Arial';
+                    ctx.fillText('🏆 NEW HIGH SCORE! 🏆', canvas.width / 2, statsY + 180);
+                }
             }
         }
 
@@ -1399,7 +2297,11 @@
                 updateEnemies();
                 updateExplosions();
                 updatePowerUps();
+                updateParticles();
                 updateScoreMultiplier();
+                if (fanShotActive) {
+                    fanShotVisualPhase += 0.15;
+                }
             }
             draw();
             requestAnimationFrame(gameLoop);
@@ -1408,10 +2310,236 @@
         canvas.addEventListener('click', () => canvas.focus());
         canvas.tabIndex = 1;
 
+        // Audio placeholders - replace with actual audio file URLs when available
+        const AUDIO_FILES = {
+            shoot: '/assets/audio/shoot.wav',
+            enemyShoot: '/assets/audio/enemy-shoot.wav',
+            explosion: '/assets/audio/explosion.wav',
+            powerup: '/assets/audio/powerup.wav',
+            backgroundMusic: '/assets/audio/background.mp3'
+        };
+
+        // Sound effect functions
+        function playShootSound() {
+            if (!audioEnabled || !audioContext) return;
+            try {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(400, audioContext.currentTime + 0.1);
+
+                gainNode.gain.setValueAtTime(sfxVolume * 0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.1);
+            } catch (e) {
+                console.log('🔊 PEW! (shoot sound)');
+            }
+        }
+
+        function playEnemyShootSound() {
+            if (!audioEnabled || !audioContext) return;
+            try {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(150, audioContext.currentTime + 0.05);
+
+                gainNode.gain.setValueAtTime(sfxVolume * 0.2, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.05);
+
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.05);
+            } catch (e) {
+                console.log('🔊 ZAP! (enemy shoot sound)');
+            }
+        }
+
+        function playExplosionSound() {
+            if (!audioEnabled || !audioContext) return;
+            try {
+                // Create multiple oscillators for a richer explosion sound
+                for (let i = 0; i < 3; i++) {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+
+                    const freq = 100 + Math.random() * 200;
+                    oscillator.frequency.setValueAtTime(freq, audioContext.currentTime + i * 0.01);
+                    oscillator.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + i * 0.01 + 0.3);
+
+                    gainNode.gain.setValueAtTime(sfxVolume * 0.4, audioContext.currentTime + i * 0.01);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + i * 0.01 + 0.3);
+
+                    oscillator.start(audioContext.currentTime + i * 0.01);
+                    oscillator.stop(audioContext.currentTime + i * 0.01 + 0.3);
+                }
+            } catch (e) {
+                console.log('💥 BOOM! (explosion sound)');
+            }
+        }
+
+        function playPowerUpSound() {
+            if (!audioEnabled || !audioContext) return;
+            try {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(660, audioContext.currentTime + 0.1);
+                oscillator.frequency.setValueAtTime(880, audioContext.currentTime + 0.2);
+
+                gainNode.gain.setValueAtTime(sfxVolume * 0.3, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(sfxVolume * 0.3, audioContext.currentTime + 0.2);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            } catch (e) {
+                console.log('✨ DING! (power-up sound)');
+            }
+        }
+
+        function playThrusterSound() {
+            if (!audioEnabled || !audioContext) return;
+            try {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                const filter = audioContext.createBiquadFilter();
+
+                oscillator.connect(filter);
+                filter.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(100 + Math.random() * 50, audioContext.currentTime);
+
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(300, audioContext.currentTime);
+
+                gainNode.gain.setValueAtTime(sfxVolume * 0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.2);
+            } catch (e) {
+                console.log('🚀 VROOM! (thruster sound)');
+            }
+        }
+
+        function playAfterburnerSound() {
+            if (!audioEnabled || !audioContext) return;
+            try {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                const filter = audioContext.createBiquadFilter();
+
+                oscillator.connect(filter);
+                filter.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(200 + Math.random() * 100, audioContext.currentTime);
+
+                filter.type = 'highpass';
+                filter.frequency.setValueAtTime(400, audioContext.currentTime);
+
+                gainNode.gain.setValueAtTime(sfxVolume * 0.15, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            } catch (e) {
+                console.log('🔥 WHOOSH! (afterburner sound)');
+            }
+        }
+
+        function playBackgroundMusic() {
+            if (!audioEnabled || !audioContext) return;
+            try {
+                // Simple ambient background tone
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                const filter = audioContext.createBiquadFilter();
+
+                oscillator.connect(filter);
+                filter.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(80, audioContext.currentTime);
+
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(200, audioContext.currentTime);
+
+                gainNode.gain.setValueAtTime(musicVolume * 0.1, audioContext.currentTime);
+
+                oscillator.start(audioContext.currentTime);
+
+                // Store reference to stop later
+                currentMusic = oscillator;
+            } catch (e) {
+                console.log('🎵 Background music playing');
+            }
+        }
+
+        function stopBackgroundMusic() {
+            if (currentMusic) {
+                try {
+                    currentMusic.stop();
+                } catch (error) {
+                    // Music might already be stopped
+                }
+                currentMusic = null;
+                console.log('🎵 Background music stopped');
+            }
+        }
+
+        // Audio controls UI (simple keyboard shortcuts for now)
+        function setupAudioControls() {
+            document.addEventListener('keydown', (e) => {
+                // Audio control shortcuts
+                if (e.key === 'm' || e.key === 'M') {
+                    // Toggle mute
+                    audioEnabled = !audioEnabled;
+                    if (!audioEnabled) {
+                        stopAllAudio();
+                    }
+                    console.log(`🔊 Audio ${audioEnabled ? 'enabled' : 'muted'}`);
+                } else if (e.key === '9') {
+                    // Decrease master volume
+                    setMasterVolume(masterVolume - 0.1);
+                    console.log(`🔊 Master volume: ${(masterVolume * 100).toFixed(0)}%`);
+                } else if (e.key === '0') {
+                    // Increase master volume
+                    setMasterVolume(masterVolume + 0.1);
+                    console.log(`🔊 Master volume: ${(masterVolume * 100).toFixed(0)}%`);
+                }
+            });
+        }
+
         // Initialize game with config loading
         async function initGame() {
             await loadConfig();
             applyConfig();
+            initAudio();
+            setupAudioControls();
+            initAuth();
+            handleAuthCallback();
             gameLoop(); // Start the render loop, but game stays in START state
         }
 
