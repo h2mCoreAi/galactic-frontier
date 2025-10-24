@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: 'vite-dev-server',
+      name: 'gf.frontend',
       script: 'npm run dev',
       cwd: '/srv/galactic-frontier',
       env: {
@@ -13,7 +13,7 @@ module.exports = {
       max_memory_restart: '1G'
     },
     {
-      name: 'backend-api',
+      name: 'gf.backend',
       script: 'server.js', // This will need to be created later
       cwd: '/srv/galactic-frontier',
       env: {
