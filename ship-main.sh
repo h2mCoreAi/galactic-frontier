@@ -37,6 +37,31 @@ ensure_branch main
 info "Fetching origin/dev and origin/main"
 git fetch origin dev main
 
+# Ensure we're on dev, update, and commit (smart)
+info "Checking out dev"
+git checkout dev
+
+info "Staging all changes on dev"
+git add .
+
+if git diff --staged --quiet; then
+  info "No staged changes to commit on dev"
+else
+  if [ -x "devScripts/commit-smart.sh" ]; then
+    info "Committing staged changes with commit-smart.sh"
+    ./devScripts/commit-smart.sh
+  else
+    info "commit-smart.sh not executable or missing; committing with generic message"
+    git commit -m "chore: update"
+  fi
+fi
+
+info "Pulling latest dev with rebase (autostash)"
+git pull --rebase --autostash origin dev
+
+info "Pushing dev to origin"
+git push origin dev
+
 # Checkout main and pull latest
 info "Checking out main and pulling latest"
 git checkout main
