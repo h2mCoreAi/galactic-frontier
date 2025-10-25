@@ -42,7 +42,7 @@ info "Checking out main and pulling latest"
 git checkout main
 git pull --rebase origin main
 
-# Merge dev into main using a merge commit (no options)
+# Merge dev into main using a merge commit (simple default)
 info "Merging dev into main (merge commit)"
 git merge --no-ff --no-edit dev
 success "Merge completed"
