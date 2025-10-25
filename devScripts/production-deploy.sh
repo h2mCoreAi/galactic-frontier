@@ -67,6 +67,42 @@ if command -v pm2 >/dev/null 2>&1; then
   pm2 save || true
 fi
 
+# Optional cleanup: keep only runtime essentials in project root
+info "Pruning development artifacts"
+KEEP_ITEMS=(
+  .
+  ..
+  .git
+  .gitignore
+  .env.production
+  config
+  frontend
+  dist
+  devScripts
+  production-deploy.sh
+  server.js
+  package.json
+  package-lock.json
+  node_modules
+  ecosystem.config.js
+  ecosystem.dev.config.js
+  logs
+  nginx.conf
+)
+
+for entry in .* *; do
+  skip=false
+  for keep in "${KEEP_ITEMS[@]}"; do
+    if [ "$entry" = "$keep" ]; then
+      skip=true
+      break
+    fi
+  done
+  if [ "$skip" = false ] && [ -e "$entry" ]; then
+    rm -rf -- "$entry"
+  fi
+done
+
 echo ""
 success "Deployment complete"
 echo "Serving from: $REPO_ROOT/dist (-> frontend/dist)"
