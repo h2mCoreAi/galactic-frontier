@@ -361,8 +361,9 @@
             updateTopScores(displayScores);
         }
 
-        // Initialize top scores asynchronously
+        // Initialize top scores asynchronously (ensure backend check runs first)
         (async () => {
+            await checkBackendAvailability();
             await initializeTopScores();
         })();
 
