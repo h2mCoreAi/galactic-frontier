@@ -12,6 +12,7 @@
     "prebuild": "node devScripts/copy-config-to-public.js",
     "build": "vite build",
     "preview": "vite preview",
+    "deploy": "bash production-deploy.sh",
     "ship": "bash ship-main.sh",
     "pm2:dev:start": "pm2 start ecosystem.dev.config.js",
     "pm2:dev:restart": "pm2 restart ecosystem.dev.config.js",
