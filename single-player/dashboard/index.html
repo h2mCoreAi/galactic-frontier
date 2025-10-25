@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Galactic Frontier Developer Dashboard</title>
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./configEditor/styles.css">
+  <link rel="stylesheet" href="./testing/styles.css">
+</head>
+<body>
+  <header class="gf-header">
+    <div class="gf-header__branding">
+      <h1>Galactic Frontier Developer Dashboard</h1>
+      <p class="gf-header__subtitle">Phase 5 tooling for configuration, testing, and documentation</p>
+    </div>
+    <div class="gf-header__actions">
+      <button id="themeToggle" type="button" class="gf-button">Toggle Theme</button>
+      <button id="refreshConfig" type="button" class="gf-button">Reload Config</button>
+      <button id="saveConfig" type="button" class="gf-button gf-button--primary">Save Changes</button>
+    </div>
+  </header>
+  <div class="gf-app">
+    <aside class="gf-sidebar">
+      <nav class="gf-nav" aria-label="Dashboard Navigation">
+        <button data-tab="overview" class="gf-nav__item" type="button">Overview</button>
+        <button data-tab="config" class="gf-nav__item" type="button">Configuration Editor</button>
+        <button data-tab="testing" class="gf-nav__item" type="button">Testing Tools</button>
+        <button data-tab="documentation" class="gf-nav__item" type="button">Documentation</button>
+        <button data-tab="settings" class="gf-nav__item" type="button">Dashboard Settings</button>
+      </nav>
+      <section class="gf-sidebar__section">
+        <h2>Session</h2>
+        <div id="sessionStatus" class="gf-session-status" role="status" aria-live="polite">Not authenticated</div>
+        <button id="authButton" type="button" class="gf-button gf-button--secondary">Authenticate with Discord</button>
+      </section>
+      <section class="gf-sidebar__section">
+        <h2>Config Files</h2>
+        <input id="configUpload" type="file" accept="application/json" class="gf-file-input">
+        <button id="downloadConfig" type="button" class="gf-button">Download Current</button>
+        <button id="revertConfig" type="button" class="gf-button gf-button--danger">Restore Backup</button>
+      </section>
+      <section class="gf-sidebar__section">
+        <h2>Backups</h2>
+        <ul id="backupList" class="gf-backup-list"></ul>
+      </section>
+    </aside>
+    <main id="mainContent" class="gf-main" role="main">
+      <section id="overviewTab" class="gf-tab" aria-labelledby="overviewNav">
+        <h2>Overview</h2>
+        <div id="overviewSummary" class="gf-overview"></div>
+      </section>
+      <section id="configTab" class="gf-tab" aria-labelledby="configNav" hidden>
+        <h2>Configuration Editor</h2>
+        <div id="configEditor" class="gf-config"></div>
+      </section>
+      <section id="testingTab" class="gf-tab" aria-labelledby="testingNav" hidden>
+        <h2>Testing Tools</h2>
+        <div id="testingTools" class="gf-testing">
+          <section class="gf-testing__section" aria-labelledby="testing-preview-heading">
+            <header class="gf-testing__header">
+              <h3 id="testing-preview-heading">Live Game Preview</h3>
+              <p>Interact with the game in real time while retaining dashboard controls.</p>
+            </header>
+            <div id="gamePreviewContainer" class="gf-preview__container"></div>
+          </section>
+
+          <section class="gf-testing__section" aria-labelledby="testing-scenarios-heading">
+            <header class="gf-testing__header">
+              <h3 id="testing-scenarios-heading">Scenario Controls</h3>
+              <p>Spawn enemies and apply presets to validate balancing.</p>
+            </header>
+            <div id="scenarioControls" class="gf-scenarios"></div>
+          </section>
+
+          <section class="gf-testing__section" aria-labelledby="testing-metrics-heading">
+            <header class="gf-testing__header">
+              <h3 id="testing-metrics-heading">Performance Metrics</h3>
+              <p>Live telemetry streamed from the preview instance.</p>
+            </header>
+            <div id="metricsPanel" class="gf-metrics"></div>
+          </section>
+
+          <section class="gf-testing__section" aria-labelledby="testing-debug-heading">
+            <header class="gf-testing__header">
+              <h3 id="testing-debug-heading">Debug Overlays</h3>
+              <p>Toggle diagnostic layers to inspect gameplay state.</p>
+            </header>
+            <div id="debugControls" class="gf-debug"></div>
+          </section>
+        </div>
+      </section>
+      <section id="documentationTab" class="gf-tab" aria-labelledby="documentationNav" hidden>
+        <h2>Documentation</h2>
+        <div id="documentationView" class="gf-docs"></div>
+      </section>
+      <section id="settingsTab" class="gf-tab" aria-labelledby="settingsNav" hidden>
+        <h2>Dashboard Settings</h2>
+        <div id="settingsView" class="gf-settings"></div>
+      </section>
+    </main>
+  </div>
+  <div id="toastContainer" class="gf-toast-container" aria-live="polite" aria-atomic="true"></div>
+  <script type="module" src="./dist/index.js"></script>
+</body>
+</html>

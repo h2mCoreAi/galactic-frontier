@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "vite",
     "prebuild": "node devScripts/copy-config-to-public.js",
-    "build": "vite build",
+    "build": "vite build --emptyOutDir",
     "preview": "vite preview",
     "deploy": "bash /srv/galactic-frontier/devScripts/production-deploy.sh",
     "ship": "bash ship-main.sh",
@@ -18,7 +18,10 @@
     "pm2:dev:restart": "pm2 restart ecosystem.dev.config.js",
     "pm2:dev:stop": "pm2 stop ecosystem.dev.config.js",
     "pm2:dev:logs": "pm2 logs",
-    "db:test": "node -e \"require('dotenv').config({path:'.env.production'}); const {Pool} = require('pg'); const pool = new Pool({connectionString: process.env.DATABASE_URL}); pool.query('SELECT 1').then(() => {console.log('Database connection successful'); pool.end(); process.exit(0);}).catch(err => {console.error('Database connection failed:', err.message); pool.end(); process.exit(1);});\""
+    "db:test": "node -e \"require('dotenv').config({path:'.env.production'}); const {Pool} = require('pg'); const pool = new Pool({connectionString: process.env.DATABASE_URL}); pool.query('SELECT 1').then(() => {console.log('Database connection successful'); pool.end(); process.exit(0);}).catch(err => {console.error('Database connection failed:', err.message); pool.end(); process.exit(1);});\"",
+    "dashboard:build": "npm run dashboard:pre && tsc --project single-player/dashboard/tsconfig.json",
+    "dashboard:watch": "npm run dashboard:pre && tsc --project single-player/dashboard/tsconfig.json --watch",
+    "dashboard:pre": "mkdir -p single-player/dashboard/dist"
   },
   "keywords": [
     "game",

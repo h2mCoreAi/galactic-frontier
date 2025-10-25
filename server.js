@@ -4,12 +4,15 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { Pool } = require('pg');
+const { randomUUID } = require('crypto');
 const passport = require('passport');
 const DiscordStrategy = require('passport-discord').Strategy;
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const winston = require('winston');
 const path = require('path');
+const fs = require('fs');
+const { promises: fsPromises } = fs;
 require('dotenv').config();
 
 // Environment variables
@@ -26,6 +29,9 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5174';
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS) || 12;
 const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000;
 const RATE_LIMIT_MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100;
+const CONFIG_PATH = path.join(__dirname, 'config', 'config.json');
+const CONFIG_BACKUP_DIR = process.env.CONFIG_BACKUP_DIR || path.join(__dirname, 'config', 'backups');
+const CONFIG_BACKUP_RETENTION = parseInt(process.env.CONFIG_BACKUP_RETENTION || '10', 10);
 
 // Initialize Express app
 const app = express();
@@ -58,6 +64,84 @@ const pool = new Pool({
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
 });
+
+const ensureDirectory = async (directoryPath) => {
+  try {
+    await fsPromises.mkdir(directoryPath, { recursive: true });
+  } catch (error) {
+    if (error.code !== 'EEXIST') {
+      throw error;
+    }
+  }
+};
+
+const readConfigFile = async () => {
+  const data = await fsPromises.readFile(CONFIG_PATH, 'utf8');
+  return JSON.parse(data);
+};
+
+const writeConfigFile = async (config) => {
+  await ensureDirectory(path.dirname(CONFIG_PATH));
+  await fsPromises.writeFile(CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`);
+};
+
+const getBackupPath = (backupId) => path.join(CONFIG_BACKUP_DIR, `${backupId}.json`);
+
+const listConfigBackupFiles = async () => {
+  await ensureDirectory(CONFIG_BACKUP_DIR);
+  const entries = await fsPromises.readdir(CONFIG_BACKUP_DIR, { withFileTypes: true });
+  const files = entries.filter((entry) => entry.isFile() && entry.name.endsWith('.json'));
+
+  const backups = await Promise.all(files.map(async (file) => {
+    const filePath = path.join(CONFIG_BACKUP_DIR, file.name);
+    const stats = await fsPromises.stat(filePath);
+    return {
+      id: path.basename(file.name, '.json'),
+      createdAt: stats.mtime.toISOString(),
+      size: stats.size,
+      path: filePath,
+    };
+  }));
+
+  backups.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  return backups;
+};
+
+const listConfigBackups = async () => {
+  const backups = await listConfigBackupFiles();
+  return backups
+    .slice(0, CONFIG_BACKUP_RETENTION)
+    .map(({ path: backupPath, ...rest }) => rest);
+};
+
+const createConfigBackup = async (config) => {
+  await ensureDirectory(CONFIG_BACKUP_DIR);
+  const backupId = `${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID()}`;
+  const backupPath = path.join(CONFIG_BACKUP_DIR, `${backupId}.json`);
+  await fsPromises.writeFile(backupPath, `${JSON.stringify(config, null, 2)}\n`);
+  await pruneConfigBackups();
+  return backupId;
+};
+
+const restoreConfigBackup = async (backupId) => {
+  const backupPath = getBackupPath(backupId);
+  const data = await fsPromises.readFile(backupPath, 'utf8');
+  const config = JSON.parse(data);
+  await writeConfigFile(config);
+  return config;
+};
+
+const pruneConfigBackups = async () => {
+  const backups = await listConfigBackupFiles();
+  const excess = backups.slice(CONFIG_BACKUP_RETENTION);
+  await Promise.all(excess.map(async (backup) => {
+    try {
+      await fsPromises.unlink(backup.path);
+    } catch (error) {
+      logger.warn('Failed to prune backup', { path: backup.path, error: error.message });
+    }
+  }));
+};
 
 // Test database connection
 pool.on('connect', () => {
@@ -399,17 +483,62 @@ app.use('/api/highscores', (req, res, next) => {
     next();
   }
 });
-app.use('/api/sessions', verifyToken);
 
 // Serve config.json for frontend
-app.get('/api/config.json', (req, res) => {
-  const configPath = path.join(__dirname, 'config', 'config.json');
-  res.sendFile(configPath, (err) => {
-    if (err) {
-      logger.error('Error serving config.json:', err);
-      res.status(500).json({ error: 'Configuration file not found' });
+app.get('/api/config.json', async (req, res) => {
+  try {
+    const config = await readConfigFile();
+    res.json(config);
+  } catch (error) {
+    logger.error('Error reading config.json:', error);
+    res.status(500).json({ error: 'Failed to read configuration' });
+  }
+});
+
+app.put('/api/config.json', verifyToken, async (req, res) => {
+  try {
+    const config = req.body;
+    if (!config || typeof config !== 'object') {
+      return res.status(400).json({ error: 'Invalid configuration payload' });
     }
-  });
+
+    await createConfigBackup(await readConfigFile());
+    await writeConfigFile(config);
+
+    logger.info('Configuration updated by user', { userId: req.user.userId });
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('Error updating configuration:', error);
+    res.status(500).json({ error: 'Failed to update configuration' });
+  }
+});
+
+app.get('/api/config/backups', verifyToken, async (req, res) => {
+  try {
+    const backups = await listConfigBackups();
+    res.json({ backups });
+  } catch (error) {
+    logger.error('Error retrieving config backups:', error);
+    res.status(500).json({ error: 'Failed to list configuration backups' });
+  }
+});
+
+app.post('/api/config/backups/:backupId/restore', verifyToken, async (req, res) => {
+  try {
+    const { backupId } = req.params;
+    const download = req.query.download === '1';
+    if (download) {
+      const backupPath = path.join(CONFIG_BACKUP_DIR, `${backupId}.json`);
+      return res.download(backupPath, `config-backup-${backupId}.json`);
+    }
+
+    const restoredConfig = await restoreConfigBackup(backupId);
+    logger.warn('Configuration restored from backup', { userId: req.user.userId, backupId });
+    res.json(restoredConfig);
+  } catch (error) {
+    logger.error('Error restoring config backup:', error);
+    res.status(500).json({ error: 'Failed to restore configuration backup' });
+  }
 });
 
 // Error handling middleware

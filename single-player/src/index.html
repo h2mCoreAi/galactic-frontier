@@ -14,6 +14,10 @@
             display: flex;
         }
 
+        body.preview-mode {
+            flex-direction: column;
+        }
+
         /* Left sidebar for banner ads */
         .left-sidebar {
             width: 200px;
@@ -28,6 +32,11 @@
             text-align: center;
         }
 
+        body.preview-mode .left-sidebar,
+        body.preview-mode .right-sidebar {
+            display: none;
+        }
+
         /* Game canvas container */
         .game-container {
             flex: 1;
@@ -37,11 +46,19 @@
             position: relative;
         }
 
+        body.preview-mode .game-container {
+            width: 100%;
+        }
+
         canvas {
             display: block;
             height: 100vh;
             width: auto;
             max-width: calc(100vw - 400px); /* Account for both sidebars */
+        }
+
+        body.preview-mode canvas {
+            max-width: 100vw;
         }
 
         /* Right sidebar for top scores */
@@ -377,36 +394,56 @@
         const err = (...a) => { if (DEBUG) console.error('[GF]', ...a); };
         window.GF_DIAG = { config: { source: 'unknown', t: 0, error: null } };
 
+        window.GF_PREVIEW = window.self !== window.top;
+        if (window.GF_PREVIEW) {
+            document.body.classList.add('preview-mode');
+            window.addEventListener('message', (event) => {
+                if (!event.data || typeof event.data !== 'object') return;
+                const { type, payload } = event.data;
+                if (type === 'config-update') {
+                    applyIncomingConfig(payload);
+                } else if (type === 'spawn-enemy') {
+                    spawnEnemy();
+                }
+            });
+        }
+
         // Config loading function
-        async function loadConfig() {
+        async function loadConfig(payload) {
             const startedAt = performance.now();
             try {
-                log('Loading game configuration...');
-                // Prefer static config to avoid noisy 502s when backend is down
-                let response = null;
-                try {
-                    response = await fetch('/config/config.json', { cache: 'no-store' });
-                    log('Tried /config/config.json ->', response.status);
-                    if (response.ok) {
-                        config = await response.json();
-                        window.GF_DIAG.config = { source: 'static:/config/config.json', t: performance.now() - startedAt, error: null };
-                        console.info('Configuration loaded (static)');
-                        configLoaded = true;
-                        return config;
+                if (payload) {
+                    config = payload;
+                    window.GF_DIAG.config = { source: 'postMessage', t: performance.now() - startedAt, error: null };
+                    console.info('Configuration received via postMessage');
+                } else {
+                    log('Loading game configuration...');
+                    // Prefer static config to avoid noisy 502s when backend is down
+                    let response = null;
+                    try {
+                        response = await fetch('/config/config.json', { cache: 'no-store' });
+                        log('Tried /config/config.json ->', response.status);
+                        if (response.ok) {
+                            config = await response.json();
+                            window.GF_DIAG.config = { source: 'static:/config/config.json', t: performance.now() - startedAt, error: null };
+                            console.info('Configuration loaded (static)');
+                            configLoaded = true;
+                            return config;
+                        }
+                    } catch (e) {
+                        warn('Static config fetch failed:', e);
                     }
-                } catch (e) {
-                    warn('Static config fetch failed:', e);
-                }
 
-                // Fallback to backend-served config
-                response = await fetch('/api/config.json', { cache: 'no-store' });
-                log('Tried /api/config.json ->', response.status);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    // Fallback to backend-served config
+                    response = await fetch('/api/config.json', { cache: 'no-store' });
+                    log('Tried /api/config.json ->', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    config = await response.json();
+                    window.GF_DIAG.config = { source: 'api:/api/config.json', t: performance.now() - startedAt, error: null };
+                    console.info('Configuration loaded (api)');
                 }
-                config = await response.json();
-                window.GF_DIAG.config = { source: 'api:/api/config.json', t: performance.now() - startedAt, error: null };
-                console.info('Configuration loaded (api)');
                 configLoaded = true;
                 return config;
             } catch (error) {
@@ -452,6 +489,11 @@
                 configLoaded = true;
                 return config;
             }
+        }
+
+        function applyIncomingConfig(newConfig) {
+            config = newConfig;
+            applyConfig();
         }
 
         // Authentication functions
@@ -2354,7 +2396,25 @@
                 }
             }
             draw();
+            publishTelemetry();
             requestAnimationFrame(gameLoop);
+        }
+
+        function publishTelemetry() {
+            if (!window.GF_PREVIEW || !window.parent) {
+                return;
+            }
+            const metrics = {
+                fps: 60,
+                enemies: enemies.length,
+                projectiles: projectiles.length + enemyProjectiles.length,
+                score,
+                level: currentLevel,
+                shipsHealth: ship.currentHealth,
+                afterburner: ship.afterburnerEnergy,
+                timestamp: Date.now(),
+            };
+            window.parent.postMessage({ type: 'metrics', payload: metrics }, '*');
         }
 
         canvas.addEventListener('click', () => canvas.focus());
