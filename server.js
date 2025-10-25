@@ -284,7 +284,8 @@ app.get('/api/highscores', async (req, res) => {
     });
   } catch (error) {
     logger.error('Highscores fetch error:', error);
-    res.status(500).json({ error: 'Failed to fetch highscores' });
+    // Fail soft for GET to avoid 500s breaking the UI
+    res.status(200).json({ highscores: [], total: 0, source: 'fallback' });
   }
 });
 
