@@ -369,25 +369,49 @@
 
         let configLoaded = false;
 
+        // Debug/diagnostics helpers: enable with ?debug=1 or localStorage.setItem('gf_debug','1')
+        const urlParams = new URLSearchParams(window.location.search);
+        const DEBUG = urlParams.get('debug') === '1' || localStorage.getItem('gf_debug') === '1';
+        const log = (...a) => { if (DEBUG) console.log('[GF]', ...a); };
+        const warn = (...a) => { if (DEBUG) console.warn('[GF]', ...a); };
+        const err = (...a) => { if (DEBUG) console.error('[GF]', ...a); };
+        window.GF_DIAG = { config: { source: 'unknown', t: 0, error: null } };
+
         // Config loading function
         async function loadConfig() {
+            const startedAt = performance.now();
             try {
-                console.log('Loading game configuration...');
-                // Try backend-served config first
-                let response = await fetch('/api/config.json');
-                if (!response.ok) {
-                    // Fallback to static config under /config for purely static hosting
-                    response = await fetch('/config/config.json');
+                log('Loading game configuration...');
+                // Prefer static config to avoid noisy 502s when backend is down
+                let response = null;
+                try {
+                    response = await fetch('/config/config.json', { cache: 'no-store' });
+                    log('Tried /config/config.json ->', response.status);
+                    if (response.ok) {
+                        config = await response.json();
+                        window.GF_DIAG.config = { source: 'static:/config/config.json', t: performance.now() - startedAt, error: null };
+                        console.info('Configuration loaded (static)');
+                        configLoaded = true;
+                        return config;
+                    }
+                } catch (e) {
+                    warn('Static config fetch failed:', e);
                 }
+
+                // Fallback to backend-served config
+                response = await fetch('/api/config.json', { cache: 'no-store' });
+                log('Tried /api/config.json ->', response.status);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 config = await response.json();
-                console.log('Configuration loaded successfully:', config);
+                window.GF_DIAG.config = { source: 'api:/api/config.json', t: performance.now() - startedAt, error: null };
+                console.info('Configuration loaded (api)');
                 configLoaded = true;
                 return config;
             } catch (error) {
-                console.error('Failed to load configuration:', error);
+                err('Failed to load configuration:', error);
+                window.GF_DIAG.config = { source: 'fallback:defaults', t: performance.now() - startedAt, error: String(error) };
                 // Provide fallback defaults
                 config = {
                     ship: {
