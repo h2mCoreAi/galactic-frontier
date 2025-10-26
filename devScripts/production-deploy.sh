@@ -43,11 +43,11 @@ info "Building frontend"
 npm run build
 success "Build complete"
 
-# Ensure dist points to frontend/dist for nginx
-info "Linking dist -> frontend/dist"
-mkdir -p frontend/dist
-ln -sfn frontend/dist dist
-test -f dist/index.html || die "dist/index.html missing after build"
+# Verify build output directory located at repo-root dist
+info "Verifying build output at $REPO_ROOT/dist"
+if [ ! -d "$REPO_ROOT/dist" ]; then
+  die "Build output missing at $REPO_ROOT/dist - Vite build.outDir mismatch. Expected repo-root 'dist'."
+fi
 
 # Quiet favicon.ico 404s by mirroring svg when present
 if [ -f dist/favicon.svg ]; then
@@ -62,8 +62,12 @@ fi
 
 # Restart backend via PM2 (if present)
 if command -v pm2 >/dev/null 2>&1; then
-  info "Restarting PM2 backend (gf.backend)"
-  pm2 restart gf.backend || true
+  info "Restarting PM2 backend (ecosystem if present)"
+  if [ -f "ecosystem.prod.config.js" ]; then
+    pm2 startOrReload ecosystem.prod.config.js --env production || true
+  else
+    pm2 restart gf.backend || true
+  fi
   pm2 save || true
 fi
 
