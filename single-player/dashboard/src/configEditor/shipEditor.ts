@@ -37,7 +37,7 @@ const render = (config: GalacticFrontierConfig | null): void => {
   const onChange = (id: string, path: (cfg: GalacticFrontierConfig) => number, set: (cfg: GalacticFrontierConfig, v: number) => void) => {
     const el = document.getElementById(id) as HTMLInputElement | null;
     if (!el) return;
-    el.addEventListener('input', () => {
+    el.addEventListener('change', () => {
       const raw = Number(el.value);
       if (!Number.isFinite(raw)) return;
       const next: GalacticFrontierConfig = JSON.parse(JSON.stringify(dashboardState.config));

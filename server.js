@@ -15,30 +15,39 @@ const fs = require('fs');
 const { promises: fsPromises } = fs;
 require('dotenv').config();
 
+// Environment guards
+const IS_PROD = process.env.NODE_ENV === 'production';
+const IS_DEV = !IS_PROD;
+
 // Environment variables
 const PORT = process.env.PORT || 3001;
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://galactic_frontier:galactic_frontier@localhost:5433/galactic_frontier';
-const JWT_SECRET = process.env.JWT_SECRET || 'galactic_frontier_jwt_secret_key_for_development_only_change_in_production';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'galactic_frontier_refresh_secret_key_for_development_only_change_in_production';
+const DATABASE_URL = process.env.DATABASE_URL || (IS_DEV ? 'postgresql://galactic_frontier:galactic_frontier@localhost:5433/galactic_frontier' : undefined);
+const JWT_SECRET = process.env.JWT_SECRET || (IS_DEV ? 'galactic_frontier_jwt_secret_key_for_development_only_change_in_production' : undefined);
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || (IS_DEV ? 'galactic_frontier_refresh_secret_key_for_development_only_change_in_production' : undefined);
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
 const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
-const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || 'placeholder';
-const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || 'placeholder';
+const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || (IS_DEV ? 'placeholder' : undefined);
+const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || (IS_DEV ? 'placeholder' : undefined);
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5174';
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5174';
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS) || 12;
 const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000;
 const RATE_LIMIT_MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100;
 const CONFIG_PATH = path.join(__dirname, 'config', 'config.json');
+const RAW_CORS = process.env.CORS_ORIGINS || process.env.CORS_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:5174';
+const CORS_ALLOWLIST = RAW_CORS.split(',').map(s => s.trim()).filter(Boolean);
 const CONFIG_BACKUP_DIR = process.env.CONFIG_BACKUP_DIR || path.join(__dirname, 'config', 'backups');
 const CONFIG_BACKUP_RETENTION = parseInt(process.env.CONFIG_BACKUP_RETENTION || '10', 10);
 
+// Environment guards
+// IS_PROD and IS_DEV defined above
+const AUTH_BYPASS = !IS_PROD && (process.env.AUTH_BYPASS === 'true' || process.env.AUTH_BYPASS === '1');
 // Initialize Express app
 const app = express();
-
 // Logger setup
+const LOG_LEVEL = process.env.LOG_LEVEL || (IS_DEV ? 'debug' : 'info');
 const logger = winston.createLogger({
-  level: 'info',
+  level: LOG_LEVEL,
   format: winston.format.combine(
     winston.format.timestamp(),
     winston.format.errors({ stack: true }),
@@ -56,6 +65,37 @@ if (process.env.NODE_ENV !== 'production') {
     format: winston.format.simple(),
   }));
 }
+
+// Startup environment validation
+(() => {
+  const required = {
+    JWT_SECRET,
+    JWT_REFRESH_SECRET,
+    DATABASE_URL,
+    DISCORD_CLIENT_ID,
+    DISCORD_CLIENT_SECRET
+  };
+  const placeholders = new Set([
+    'dev_jwt_secret',
+    'dev_jwt_refresh_secret',
+    'placeholder',
+    'replace_me',
+    'galactic_frontier_jwt_secret_key_for_development_only_change_in_production',
+    'galactic_frontier_refresh_secret_key_for_development_only_change_in_production'
+  ]);
+  const missingKeys = Object.entries(required)
+    .filter(([key, value]) => !value || placeholders.has(String(value)))
+    .map(([key]) => key);
+
+  if (missingKeys.length > 0) {
+    if (IS_PROD) {
+      logger.error('Missing or placeholder required environment variables', { missingKeys });
+      process.exit(1);
+    } else {
+      logger.warn('Missing or placeholder required environment variables (dev mode, continuing)', { missingKeys });
+    }
+  }
+})();
 
 // Database connection
 const pool = new Pool({
@@ -159,9 +199,14 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin: CORS_ORIGIN,
-  credentials: true,
+  origin(origin, cb) {
+    if (!origin) return cb(null, true); // allow non-browser or same-origin
+    cb(null, CORS_ALLOWLIST.includes(origin));
+  },
+  credentials: true
 }));
+
+app.set('trust proxy', 1);
 
 const limiter = rateLimit({
   windowMs: RATE_LIMIT_WINDOW_MS,
@@ -351,19 +396,20 @@ app.get('/api/highscores', async (req, res) => {
         h.id,
         h.score,
         h.level_reached,
-        EXTRACT(EPOCH FROM h.play_time) as play_time_seconds,
-        h.timestamp,
+        h.play_time AS play_time,
+        h.created_at AS created_at,
         u.username,
         p.avatar_url
       FROM sp_highscores h
       JOIN users u ON h.user_id = u.id
       LEFT JOIN profiles p ON p.user_id = u.id
-      ORDER BY h.score DESC
+      ORDER BY h.score DESC, h.created_at DESC
       LIMIT $1 OFFSET $2
     `, [limit, offset]);
 
+    const highscores = highscoresResult.rows.map(r => ({ ...r, timestamp: r.created_at }));
     res.json({
-      highscores: highscoresResult.rows,
+      highscores,
       total: highscoresResult.rowCount
     });
   } catch (error) {
@@ -381,12 +427,32 @@ app.post('/api/highscores', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Convert play_time from seconds to PostgreSQL interval
-    const playTimeInterval = `${Math.floor(play_time)} seconds`;
+    // Parse play_time to integer seconds (accept number or "hh:mm:ss"/"mm:ss"/"ss")
+    const parsePlayTimeToSeconds = (value) => {
+      if (typeof value === 'number' && isFinite(value)) return Math.max(0, Math.floor(value));
+      if (typeof value === 'string') {
+        const parts = value.split(':').map(Number);
+        if (parts.some(n => Number.isNaN(n) || n < 0)) return 0;
+        let secs = 0;
+        if (parts.length === 1) {
+          secs = parts[0];
+        } else if (parts.length === 2) {
+          secs = parts[0] * 60 + parts[1];
+        } else if (parts.length === 3) {
+          secs = parts[0] * 3600 + parts[1] * 60 + parts[2];
+        } else {
+          return 0;
+        }
+        return Math.max(0, Math.floor(secs));
+      }
+      return 0;
+    };
 
-    await pool.query(
-      'INSERT INTO sp_highscores (user_id, score, level_reached, play_time, timestamp, session_id) VALUES ($1, $2, $3, $4, NOW(), $5)',
-      [req.user.userId, score, level_reached, playTimeInterval, session_id]
+    const playTimeSeconds = parsePlayTimeToSeconds(play_time);
+
+    const insertResult = await pool.query(
+      'INSERT INTO sp_highscores (user_id, score, level_reached, play_time, session_id) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at',
+      [req.user.userId, score, level_reached, playTimeSeconds, session_id]
     );
 
     // Update user profile total score and level
@@ -406,7 +472,8 @@ app.post('/api/highscores', verifyToken, async (req, res) => {
       );
     }
 
-    res.json({ success: true });
+    const created = insertResult.rows[0];
+    res.json({ success: true, id: created.id, created_at: created.created_at });
   } catch (error) {
     logger.error('Highscore submission error:', error);
     res.status(500).json({ error: 'Failed to submit highscore' });
@@ -449,6 +516,12 @@ app.put('/api/sessions/:sessionId/end', verifyToken, async (req, res) => {
 
 // JWT verification middleware
 function verifyToken(req, res, next) {
+  if (AUTH_BYPASS) {
+    if (!req.user) {
+      req.user = { userId: 'dev-bypass', username: 'Dev Bypass', role: 'admin', name: 'Dev Bypass' };
+    }
+    return next();
+  }
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
@@ -572,9 +645,13 @@ process.on('SIGINT', () => {
   });
 });
 
-// Start server
+ // Start server
 app.listen(PORT, () => {
+  logger.info(`Effective LOG_LEVEL: ${LOG_LEVEL}`);
   logger.info(`Galactic Frontier Backend server running on port ${PORT}`);
   logger.info(`Frontend URL: ${FRONTEND_URL}`);
-  logger.info(`CORS Origin: ${CORS_ORIGIN}`);
+  logger.info(`CORS Allowlist: ${CORS_ALLOWLIST.join(', ')}`);
+  if (AUTH_BYPASS) {
+    logger.warn('AUTH BYPASS ENABLED: verifyToken() is bypassed in development. Do NOT enable in production.');
+  }
 });

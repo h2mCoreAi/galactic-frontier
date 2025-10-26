@@ -316,9 +316,9 @@ export const initializeProjectileEditor = (): void => {
   }
 
   // convert explicit submit buttons into immediate apply for consistency with Ship
-  elements.projectileForm?.addEventListener('input', applyProjectileInputs);
   elements.projectileForm?.addEventListener('change', applyProjectileInputs);
-  elements.gameForm?.addEventListener('input', applyGameInputs);
+  elements.projectileForm?.addEventListener('change', applyProjectileInputs);
+  elements.gameForm?.addEventListener('change', applyGameInputs);
   elements.gameForm?.addEventListener('change', applyGameInputs);
 
   // wire sub-tab switching

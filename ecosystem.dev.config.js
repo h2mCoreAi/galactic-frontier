@@ -6,7 +6,8 @@ module.exports = {
       cwd: '/srv/galactic-frontier',
       env: {
         NODE_ENV: 'development',
-        PORT: 3001
+        PORT: 3001,
+        AUTH_BYPASS: 'true'
       },
       watch: ['server.js', 'api'],
       ignore_watch: ['node_modules', 'dist', 'logs'],

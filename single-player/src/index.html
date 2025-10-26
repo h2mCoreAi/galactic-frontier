@@ -210,7 +210,6 @@
                     const response = await fetch('/api/sessions/start', {
                         method: 'POST',
                         headers: headers,
-                        credentials: 'include'
                     });
 
                     if (response.ok) {
@@ -238,7 +237,6 @@
                     const response = await fetch(`/api/sessions/${currentSessionId}/end`, {
                         method: 'PUT',
                         headers: headers,
-                        credentials: 'include',
                         body: JSON.stringify({
                             score: finalScore,
                             level_reached: levelReached,
@@ -288,7 +286,6 @@
                         const response = await fetch('/api/highscores', {
                             method: 'POST',
                             headers: headers,
-                            credentials: 'include',
                             body: JSON.stringify({
                                 score: finalScore,
                                 level_reached: level,
@@ -329,10 +326,13 @@
             // Try to get from backend first, fallback to local
             if (backendAvailable) {
                 try {
+                    const headers = { 'Content-Type': 'application/json' };
+                    if (authToken) {
+                        headers['Authorization'] = `Bearer ${authToken}`;
+                    }
                     const response = await fetch('/api/highscores?limit=10', {
                         method: 'GET',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include'
+                        headers: headers
                     });
 
                     if (response.ok) {

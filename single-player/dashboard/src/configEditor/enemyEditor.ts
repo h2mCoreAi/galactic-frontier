@@ -206,7 +206,7 @@ const bindEvents = (): void => {
   if (!elements) {
     return;
   }
-  elements.form.addEventListener('input', applyForm);
+  elements.form.addEventListener('change', applyForm);
   elements.form.addEventListener('change', applyForm);
   elements.form.addEventListener('submit', (e) => {
     e.preventDefault();

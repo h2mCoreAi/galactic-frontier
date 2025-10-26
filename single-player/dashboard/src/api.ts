@@ -24,8 +24,7 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
 export const fetchConfig = async (): Promise<GalacticFrontierConfig> => {
   const response = await fetch('/api/config.json', {
     method: 'GET',
-    headers: { ...JSON_HEADERS },
-    credentials: 'include',
+    headers: { ...JSON_HEADERS, ...getAuthHeaders() },
     cache: 'no-store',
   });
   return handleResponse<GalacticFrontierConfig>(response);
@@ -35,7 +34,6 @@ export const persistConfig = async (config: GalacticFrontierConfig): Promise<voi
   const response = await fetch('/api/config.json', {
     method: 'PUT',
     headers: { ...JSON_HEADERS, ...getAuthHeaders() },
-    credentials: 'include',
     body: JSON.stringify(config),
   });
   await handleResponse<void>(response);
@@ -45,7 +43,6 @@ export const fetchBackups = async (): Promise<DashboardBackup[]> => {
   const response = await fetch('/api/config/backups', {
     method: 'GET',
     headers: { ...JSON_HEADERS, ...getAuthHeaders() },
-    credentials: 'include',
     cache: 'no-store',
   });
   const payload = await handleResponse<{ backups: DashboardBackup[] }>(response);
@@ -56,7 +53,6 @@ export const restoreBackup = async (backupId: string): Promise<GalacticFrontierC
   const response = await fetch(`/api/config/backups/${backupId}/restore`, {
     method: 'POST',
     headers: { ...JSON_HEADERS, ...getAuthHeaders() },
-    credentials: 'include',
   });
   return handleResponse<GalacticFrontierConfig>(response);
 };
@@ -70,7 +66,6 @@ export const verifyAuthentication = async (): Promise<boolean> => {
     const response = await fetch('/api/profile', {
       method: 'GET',
       headers: { ...JSON_HEADERS, ...getAuthHeaders() },
-      credentials: 'include',
       cache: 'no-store',
     });
     if (!response.ok) {
