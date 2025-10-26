@@ -3,7 +3,7 @@ import type { DashboardSubscriber, EnemyConfig } from '../types';
 
 interface EnemyEditorElements {
   readonly container: HTMLElement;
-  readonly list: HTMLElement;
+  readonly cards: HTMLElement;
   readonly form: HTMLFormElement;
   readonly typeInput: HTMLInputElement;
   readonly speedInput: HTMLInputElement;
@@ -12,7 +12,6 @@ interface EnemyEditorElements {
   readonly shootIntervalInput: HTMLInputElement;
   readonly projectileDamageInput: HTMLInputElement;
   readonly collisionDamageInput: HTMLInputElement;
-  readonly submitButton: HTMLButtonElement;
   readonly deleteButton: HTMLButtonElement;
 }
 
@@ -23,50 +22,56 @@ const createElements = (): EnemyEditorElements | null => {
   }
 
   container.innerHTML = `
-    <div class="gf-list-panel">
-      <div class="gf-list-panel__header">
+    <div class="gf-card-panel">
+      <div class="gf-card-panel__header">
         <h3>Enemy Types</h3>
         <button type="button" class="gf-button gf-button--secondary" id="enemyAdd">New Enemy Type</button>
       </div>
-      <div id="enemyList" class="gf-list-panel__list" role="list"></div>
+      <div id="enemyCards" class="gf-card-grid" role="list"></div>
     </div>
     <form id="enemyForm" class="gf-form" autocomplete="off">
-      <div class="gf-form__row">
-        <label class="gf-form__field">
-          <span>Type</span>
-          <input id="enemyType" name="type" required />
-        </label>
-        <label class="gf-form__field">
-          <span>Speed</span>
-          <input id="enemySpeed" name="speed" type="number" step="0.1" required />
-        </label>
-        <label class="gf-form__field">
-          <span>Size</span>
-          <input id="enemySize" name="size" type="number" step="1" required />
-        </label>
-      </div>
-      <div class="gf-form__row">
-        <label class="gf-form__field">
-          <span>Points</span>
-          <input id="enemyPoints" name="points" type="number" step="1" required />
-        </label>
-        <label class="gf-form__field">
-          <span>Shoot Interval (frames)</span>
-          <input id="enemyShootInterval" name="shootInterval" type="number" step="1" required />
-        </label>
-      </div>
-      <div class="gf-form__row">
-        <label class="gf-form__field">
-          <span>Projectile Damage</span>
-          <input id="enemyProjectileDamage" name="projectileDamage" type="number" step="0.1" required />
-        </label>
-        <label class="gf-form__field">
-          <span>Collision Damage</span>
-          <input id="enemyCollisionDamage" name="collisionDamage" type="number" step="0.1" required />
-        </label>
+      <div class="gf-group">
+        <div class="gf-group__title">Enemy Details</div>
+        <div class="gf-group__desc">Manage enemy type, stats, and damage.</div>
+        <div class="gf-group__grid">
+          <label class="gf-form__field">
+            <span>Type</span>
+            <input id="enemyType" name="type" required />
+            <small class="gf-help">Unique identifier (e.g., small, medium, large).</small>
+          </label>
+          <label class="gf-form__field">
+            <span>Speed</span>
+            <input id="enemySpeed" name="speed" type="number" step="0.1" required />
+            <small class="gf-help">Movement speed per frame.</small>
+          </label>
+          <label class="gf-form__field">
+            <span>Size</span>
+            <input id="enemySize" name="size" type="number" step="1" required />
+            <small class="gf-help">Collision radius; larger is easier to hit.</small>
+          </label>
+          <label class="gf-form__field">
+            <span>Points</span>
+            <input id="enemyPoints" name="points" type="number" step="1" required />
+            <small class="gf-help">Score awarded for destroying this enemy.</small>
+          </label>
+          <label class="gf-form__field">
+            <span>Shoot Interval (frames)</span>
+            <input id="enemyShootInterval" name="shootInterval" type="number" step="1" required />
+            <small class="gf-help">Lower = shoots more often (frame-based).</small>
+          </label>
+          <label class="gf-form__field">
+            <span>Projectile Damage</span>
+            <input id="enemyProjectileDamage" name="projectileDamage" type="number" step="0.1" required />
+            <small class="gf-help">Damage dealt by enemy bullets.</small>
+          </label>
+          <label class="gf-form__field">
+            <span>Collision Damage</span>
+            <input id="enemyCollisionDamage" name="collisionDamage" type="number" step="0.1" required />
+            <small class="gf-help">Damage when colliding with the player.</small>
+          </label>
+        </div>
       </div>
       <div class="gf-form__actions">
-        <button type="submit" class="gf-button gf-button--primary" id="enemySubmit">Save Enemy</button>
         <button type="button" class="gf-button gf-button--danger" id="enemyDelete">Delete Enemy</button>
       </div>
     </form>
@@ -74,7 +79,7 @@ const createElements = (): EnemyEditorElements | null => {
 
   return {
     container,
-    list: container.querySelector('#enemyList') as HTMLElement,
+    cards: container.querySelector('#enemyCards') as HTMLElement,
     form: container.querySelector('#enemyForm') as HTMLFormElement,
     typeInput: container.querySelector('#enemyType') as HTMLInputElement,
     speedInput: container.querySelector('#enemySpeed') as HTMLInputElement,
@@ -83,7 +88,6 @@ const createElements = (): EnemyEditorElements | null => {
     shootIntervalInput: container.querySelector('#enemyShootInterval') as HTMLInputElement,
     projectileDamageInput: container.querySelector('#enemyProjectileDamage') as HTMLInputElement,
     collisionDamageInput: container.querySelector('#enemyCollisionDamage') as HTMLInputElement,
-    submitButton: container.querySelector('#enemySubmit') as HTMLButtonElement,
     deleteButton: container.querySelector('#enemyDelete') as HTMLButtonElement,
   };
 };
@@ -91,26 +95,33 @@ const createElements = (): EnemyEditorElements | null => {
 let elements: EnemyEditorElements | null = null;
 let selectedType: string | null = null;
 
-const renderEnemyList = (enemies: EnemyConfig[]): void => {
+const renderEnemyCards = (enemies: EnemyConfig[]): void => {
   if (!elements) {
     return;
   }
-  elements.list.innerHTML = '';
+  elements.cards.innerHTML = '';
   enemies.forEach((enemy) => {
-    const item = document.createElement('button');
-    item.type = 'button';
-    item.className = 'gf-list-item';
-    item.dataset.type = enemy.type;
-    item.textContent = `${enemy.type} (${enemy.points} pts)`;
-    if (enemy.type === selectedType) {
-      item.classList.add('gf-list-item--active');
-    }
-    item.addEventListener('click', () => {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'gf-card';
+    if (enemy.type === selectedType) card.classList.add('gf-card--active');
+    card.innerHTML = `
+      <div class="gf-card__header">
+        <span class="gf-card__title">${enemy.type}</span>
+        <span class="gf-card__tag">${enemy.points} pts</span>
+      </div>
+      <div class="gf-card__meta">
+        <span>spd ${enemy.speed}</span>
+        <span>sz ${enemy.size}</span>
+        <span>int ${enemy.shootInterval}</span>
+      </div>
+    `;
+    card.addEventListener('click', () => {
       selectedType = enemy.type;
       populateForm(enemy);
-      renderEnemyList(enemies);
+      renderEnemyCards(enemies);
     });
-    elements?.list.appendChild(item);
+    elements?.cards.appendChild(card);
   });
 };
 
@@ -146,8 +157,7 @@ const readForm = (): EnemyConfig | null => {
   };
 };
 
-const handleSubmit = (event: Event): void => {
-  event.preventDefault();
+const applyForm = (): void => {
   const enemy = readForm();
   if (!enemy) {
     return;
@@ -156,11 +166,8 @@ const handleSubmit = (event: Event): void => {
   if (!config) {
     return;
   }
-
-  const updatedEnemies = config.enemies.some((e) => e.type === enemy.type)
-    ? config.enemies.map((existing) => (existing.type === enemy.type ? enemy : existing))
-    : [...config.enemies, enemy];
-
+  const others = config.enemies.filter((e) => e.type !== selectedType && e.type !== enemy.type);
+  const updatedEnemies = [...others, enemy];
   actions.setConfig({ ...config, enemies: updatedEnemies });
   selectedType = enemy.type;
 };
@@ -188,7 +195,12 @@ const bindEvents = (): void => {
   if (!elements) {
     return;
   }
-  elements.form.addEventListener('submit', handleSubmit);
+  elements.form.addEventListener('input', applyForm);
+  elements.form.addEventListener('change', applyForm);
+  elements.form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    applyForm();
+  });
   elements.deleteButton.addEventListener('click', handleDelete);
 
   const addButton = document.getElementById('enemyAdd');
@@ -210,7 +222,7 @@ const updateEditor: DashboardSubscriber['notify'] = (snapshot) => {
     selectedType = snapshot.config.enemies[0].type;
   }
 
-  renderEnemyList(snapshot.config.enemies);
+  renderEnemyCards(snapshot.config.enemies);
   if (selectedType) {
     const activeEnemy = snapshot.config.enemies.find((enemy) => enemy.type === selectedType);
     if (activeEnemy) {
@@ -235,7 +247,7 @@ export const initializeEnemyEditor = (): void => {
   const config = dashboardState.config;
   if (config && config.enemies.length > 0) {
     selectedType = config.enemies[0].type;
-    renderEnemyList(config.enemies);
+    renderEnemyCards(config.enemies);
     populateForm(config.enemies[0]);
   }
 };
