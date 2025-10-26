@@ -42,37 +42,37 @@ const createElements = (): EnemyEditorElements | null => {
           </label>
           <label class="gf-form__field">
             <span>Speed</span>
-            <input id="enemySpeed" name="speed" type="number" step="0.0001" inputmode="decimal" required />
+            <input id="enemySpeed" name="speed" type="text"  pattern="[0-9]*.?[0-9]*" required />
             <small class="gf-help">Movement speed per frame.</small>
           </label>
           <label class="gf-form__field">
             <span>Size</span>
-            <input id="enemySize" name="size" type="number" step="0.0001" inputmode="decimal" required />
+            <input id="enemySize" name="size" type="text"  pattern="[0-9]*.?[0-9]*" required />
             <small class="gf-help">Collision radius; larger is easier to hit.</small>
           </label>
           <label class="gf-form__field">
             <span>Hitbox Size</span>
-            <input id="enemyHitboxSize" name="hitboxSize" type="number" step="0.0001" inputmode="decimal" />
+            <input id="enemyHitboxSize" name="hitboxSize" type="text"  pattern="[0-9]*.?[0-9]*" />
             <small class="gf-help">Optional radial hitbox; defaults to Size if empty.</small>
           </label>
           <label class="gf-form__field">
             <span>Points</span>
-            <input id="enemyPoints" name="points" type="number" step="0.0001" inputmode="decimal" required />
+            <input id="enemyPoints" name="points" type="text"  pattern="[0-9]*.?[0-9]*" required />
             <small class="gf-help">Score awarded for destroying this enemy.</small>
           </label>
           <label class="gf-form__field">
             <span>Shoot Interval (frames)</span>
-            <input id="enemyShootInterval" name="shootInterval" type="number" step="0.0001" inputmode="decimal" required />
+            <input id="enemyShootInterval" name="shootInterval" type="text"  pattern="[0-9]*.?[0-9]*" required />
             <small class="gf-help">Lower = shoots more often (frame-based).</small>
           </label>
           <label class="gf-form__field">
             <span>Projectile Damage</span>
-            <input id="enemyProjectileDamage" name="projectileDamage" type="number" step="0.0001" inputmode="decimal" required />
+            <input id="enemyProjectileDamage" name="projectileDamage" type="text"  pattern="[0-9]*.?[0-9]*" required />
             <small class="gf-help">Damage dealt by enemy bullets.</small>
           </label>
           <label class="gf-form__field">
             <span>Collision Damage</span>
-            <input id="enemyCollisionDamage" name="collisionDamage" type="number" step="0.0001" inputmode="decimal" required />
+            <input id="enemyCollisionDamage" name="collisionDamage" type="text"  pattern="[0-9]*.?[0-9]*" required />
             <small class="gf-help">Damage when colliding with the player.</small>
           </label>
         </div>

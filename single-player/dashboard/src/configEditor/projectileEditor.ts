@@ -22,27 +22,27 @@ const createElements = (): ProjectileEditorElements => {
           <div class="gf-group__grid">
           <label class="gf-form__field">
             <span>Speed</span>
-            <input id="projectileSpeed" name="speed" type="number" step="0.0001" inputmode="decimal" required />
+            <input id="projectileSpeed" name="speed" type="text"  pattern="[0-9]*.?[0-9]*" required />
             <small class="gf-help">Pixels per frame for bullets.</small>
           </label>
           <label class="gf-form__field">
             <span>Life (frames)</span>
-            <input id="projectileLife" name="life" type="number" step="0.0001" inputmode="decimal" required />
+            <input id="projectileLife" name="life" type="text"  pattern="[0-9]*.?[0-9]*" required />
             <small class="gf-help">How long bullets persist before despawning.</small>
           </label>
             <label class="gf-form__field">
               <span>Cooldown (frames)</span>
-              <input id="projectileCooldown" name="cooldown" type="number" step="0.0001" inputmode="decimal" required />
+              <input id="projectileCooldown" name="cooldown" type="text"  pattern="[0-9]*.?[0-9]*" required />
               <small class="gf-help">Frames between shots; lower = faster fire rate.</small>
             </label>
             <label class="gf-form__field">
               <span>Fan Shot Count</span>
-              <input id="projectileFanShotCount" name="fanShotCount" type="number" step="0.0001" inputmode="decimal" required />
+              <input id="projectileFanShotCount" name="fanShotCount" type="text"  pattern="[0-9]*.?[0-9]*" required />
               <small class="gf-help">Number of bullets fired in spread mode.</small>
             </label>
           <label class="gf-form__field">
             <span>Fan Shot Angle (radians)</span>
-            <input id="projectileFanShotAngle" name="fanShotAngle" type="number" step="0.0001" inputmode="decimal" required />
+            <input id="projectileFanShotAngle" name="fanShotAngle" type="text"  pattern="[0-9]*.?[0-9]*" required />
             <small class="gf-help">Spread angle (in radians) across fan-shot.</small>
           </label>
           </div>
@@ -70,47 +70,47 @@ const createElements = (): ProjectileEditorElements => {
           <div class="gf-group__grid">
             <label class="gf-form__field">
               <span>Score to Level Up</span>
-              <input id="gameScoreToLevelUp" name="scoreToLevelUp" type="number" step="1" required />
+              <input id="gameScoreToLevelUp" name="scoreToLevelUp" type="text" step="1" required />
               <small class="gf-help">Points required to increment the level.</small>
             </label>
             <label class="gf-form__field">
               <span>Enemy Spawn Min (frames)</span>
-              <input id="gameMinSpawn" name="minSpawnInterval" type="number" step="1" required />
+              <input id="gameMinSpawn" name="minSpawnInterval" type="text" step="1" required />
               <small class="gf-help">Minimum frames between spawns.</small>
             </label>
             <label class="gf-form__field">
               <span>Enemy Spawn Max (frames)</span>
-              <input id="gameMaxSpawn" name="maxSpawnInterval" type="number" step="1" required />
+              <input id="gameMaxSpawn" name="maxSpawnInterval" type="text" step="1" required />
               <small class="gf-help">Maximum frames between spawns.</small>
             </label>
             <label class="gf-form__field">
               <span>Health Power-Up Min</span>
-              <input id="gameHealthMin" name="minHealthSpawnInterval" type="number" step="1" required />
+              <input id="gameHealthMin" name="minHealthSpawnInterval" type="text" step="1" required />
               <small class="gf-help">Earliest interval (frames) for health power-ups.</small>
             </label>
             <label class="gf-form__field">
               <span>Health Power-Up Max</span>
-              <input id="gameHealthMax" name="maxHealthSpawnInterval" type="number" step="1" required />
+              <input id="gameHealthMax" name="maxHealthSpawnInterval" type="text" step="1" required />
               <small class="gf-help">Latest interval (frames) for health power-ups.</small>
             </label>
             <label class="gf-form__field">
               <span>Health Power-Up Value</span>
-              <input id="gameHealthValue" name="healthPowerUpValue" type="number" step="1" required />
+              <input id="gameHealthValue" name="healthPowerUpValue" type="text" step="1" required />
               <small class="gf-help">HP restored when collected.</small>
             </label>
             <label class="gf-form__field">
               <span>Fan Shot Spawn Min</span>
-              <input id="gameFanMin" name="minFanShotSpawnInterval" type="number" step="1" required />
+              <input id="gameFanMin" name="minFanShotSpawnInterval" type="text" step="1" required />
               <small class="gf-help">Earliest interval (frames) for fan-shot power-ups.</small>
             </label>
             <label class="gf-form__field">
               <span>Fan Shot Spawn Max</span>
-              <input id="gameFanMax" name="maxFanShotSpawnInterval" type="number" step="1" required />
+              <input id="gameFanMax" name="maxFanShotSpawnInterval" type="text" step="1" required />
               <small class="gf-help">Latest interval (frames) for fan-shot power-ups.</small>
             </label>
             <label class="gf-form__field">
               <span>Fan Shot Duration (frames)</span>
-              <input id="gameFanDuration" name="fanShotDuration" type="number" step="1" required />
+              <input id="gameFanDuration" name="fanShotDuration" type="text" step="1" required />
               <small class="gf-help">Duration of spread mode (frames).</small>
             </label>
           </div>
@@ -121,32 +121,32 @@ const createElements = (): ProjectileEditorElements => {
           <div class="gf-group__grid">
             <label class="gf-form__field">
               <span>Max Enemies</span>
-              <input id="gameMaxEnemies" name="maxEnemies" type="number" step="1" />
+              <input id="gameMaxEnemies" name="maxEnemies" type="text" step="1" />
               <small class="gf-help">Cap the number of active enemies.</small>
             </label>
             <label class="gf-form__field">
               <span>Spawn Rate Factor / Level</span>
-              <input id="gameSpawnRateFactor" name="spawnRatePerLevelFactor" type="number" step="0.01" />
+              <input id="gameSpawnRateFactor" name="spawnRatePerLevelFactor" type="text" step="0.01" />
               <small class="gf-help">Per-level multiplier for spawn intervals (e.g., 0.9).</small>
             </label>
             <label class="gf-form__field">
               <span>Min Spawn Rate Clamp</span>
-              <input id="gameMinSpawnClamp" name="minSpawnRateClamp" type="number" step="0.01" />
+              <input id="gameMinSpawnClamp" name="minSpawnRateClamp" type="text" step="0.01" />
               <small class="gf-help">Lowest allowed spawn-rate factor (e.g., 0.3).</small>
             </label>
             <label class="gf-form__field">
               <span>Weight: Small</span>
-              <input id="gameWeightSmall" type="number" step="0.01" />
+              <input id="gameWeightSmall" type="text" step="0.01" />
               <small class="gf-help">Spawn weight for small enemies.</small>
             </label>
             <label class="gf-form__field">
               <span>Weight: Medium</span>
-              <input id="gameWeightMedium" type="number" step="0.01" />
+              <input id="gameWeightMedium" type="text" step="0.01" />
               <small class="gf-help">Spawn weight for medium enemies.</small>
             </label>
             <label class="gf-form__field">
               <span>Weight: Large</span>
-              <input id="gameWeightLarge" type="number" step="0.01" />
+              <input id="gameWeightLarge" type="text" step="0.01" />
               <small class="gf-help">Spawn weight for large enemies.</small>
             </label>
           </div>
@@ -157,17 +157,17 @@ const createElements = (): ProjectileEditorElements => {
           <div class="gf-group__grid">
             <label class="gf-form__field">
               <span>Enemy Speed / Level</span>
-              <input id="gameScaleEnemySpeed" type="number" step="0.01" />
+              <input id="gameScaleEnemySpeed" type="text" step="0.01" />
               <small class="gf-help">Per-level multiplier for enemy speed (e.g., 1.05).</small>
             </label>
             <label class="gf-form__field">
               <span>Projectile Damage / Level</span>
-              <input id="gameScaleProjDamage" type="number" step="0.01" />
+              <input id="gameScaleProjDamage" type="text" step="0.01" />
               <small class="gf-help">Per-level multiplier for enemy bullet damage (e.g., 1.1).</small>
             </label>
             <label class="gf-form__field">
               <span>Collision Damage / Level</span>
-              <input id="gameScaleCollDamage" type="number" step="0.01" />
+              <input id="gameScaleCollDamage" type="text" step="0.01" />
               <small class="gf-help">Per-level multiplier for collision damage (e.g., 1.15).</small>
             </label>
           </div>
