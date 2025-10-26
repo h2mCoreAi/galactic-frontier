@@ -22,27 +22,27 @@ const createElements = (): ProjectileEditorElements => {
           <div class="gf-group__grid">
           <label class="gf-form__field">
             <span>Speed</span>
-            <input id="projectileSpeed" name="speed" type="number" step="0.01" required />
+            <input id="projectileSpeed" name="speed" type="number" step="any" inputmode="decimal" required />
             <small class="gf-help">Pixels per frame for bullets.</small>
           </label>
           <label class="gf-form__field">
             <span>Life (frames)</span>
-            <input id="projectileLife" name="life" type="number" step="0.01" required />
+            <input id="projectileLife" name="life" type="number" step="any" inputmode="decimal" required />
             <small class="gf-help">How long bullets persist before despawning.</small>
           </label>
             <label class="gf-form__field">
               <span>Cooldown (frames)</span>
-              <input id="projectileCooldown" name="cooldown" type="number" step="0.01" required />
+              <input id="projectileCooldown" name="cooldown" type="number" step="any" inputmode="decimal" required />
               <small class="gf-help">Frames between shots; lower = faster fire rate.</small>
             </label>
             <label class="gf-form__field">
               <span>Fan Shot Count</span>
-              <input id="projectileFanShotCount" name="fanShotCount" type="number" step="0.01" required />
+              <input id="projectileFanShotCount" name="fanShotCount" type="number" step="any" inputmode="decimal" required />
               <small class="gf-help">Number of bullets fired in spread mode.</small>
             </label>
           <label class="gf-form__field">
             <span>Fan Shot Angle (radians)</span>
-            <input id="projectileFanShotAngle" name="fanShotAngle" type="number" step="0.01" required />
+            <input id="projectileFanShotAngle" name="fanShotAngle" type="number" step="any" inputmode="decimal" required />
             <small class="gf-help">Spread angle (in radians) across fan-shot.</small>
           </label>
           </div>

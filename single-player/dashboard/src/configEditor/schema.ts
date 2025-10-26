@@ -42,6 +42,7 @@ const SCHEMAS: ConfigSchemaVersion[] = [
             properties: {
               type: { type: 'string' },
               size: { type: 'number' },
+              hitboxSize: { type: 'number' },
               speed: { type: 'number' },
               points: { type: 'number' },
               shootInterval: { type: 'number' },
@@ -63,6 +64,25 @@ const SCHEMAS: ConfigSchemaVersion[] = [
             maxFanShotSpawnInterval: { type: 'number' },
             healthPowerUpValue: { type: 'number' },
             fanShotDuration: { type: 'number' },
+            maxEnemies: { type: 'number' },
+            enemyTypeWeights: {
+              type: 'object',
+              properties: {
+                small: { type: 'number' },
+                medium: { type: 'number' },
+                large: { type: 'number' },
+              },
+            },
+            spawnRatePerLevelFactor: { type: 'number' },
+            minSpawnRateClamp: { type: 'number' },
+            levelScaling: {
+              type: 'object',
+              properties: {
+                enemySpeedPerLevel: { type: 'number' },
+                projectileDamagePerLevel: { type: 'number' },
+                collisionDamagePerLevel: { type: 'number' },
+              },
+            },
           },
         },
       },

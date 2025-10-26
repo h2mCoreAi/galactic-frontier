@@ -22,6 +22,7 @@ export interface ProjectileConfig {
 export interface EnemyConfig {
   readonly type: string;
   readonly size: number;
+  readonly hitboxSize?: number;
   readonly speed: number;
   readonly points: number;
   readonly shootInterval: number;
@@ -39,6 +40,15 @@ export interface GameConfig {
   readonly maxFanShotSpawnInterval: number;
   readonly healthPowerUpValue: number;
   readonly fanShotDuration: number;
+  readonly maxEnemies?: number;
+  readonly enemyTypeWeights?: { small: number; medium: number; large: number };
+  readonly spawnRatePerLevelFactor?: number;
+  readonly minSpawnRateClamp?: number;
+  readonly levelScaling?: {
+    enemySpeedPerLevel?: number;
+    projectileDamagePerLevel?: number;
+    collisionDamagePerLevel?: number;
+  };
 }
 
 export interface GalacticFrontierConfig {

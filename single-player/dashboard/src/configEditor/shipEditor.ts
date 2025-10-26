@@ -8,7 +8,7 @@ const getContainer = (): HTMLElement | null => document.getElementById(container
 const numberInput = (id: string, label: string, value: number, step = 0.01, help?: string): string => `
   <label class="gf-form__field gf-field--inline">
     <span class="gf-form__label">${label}</span>
-    <input id="${id}" class="gf-input" type="number" step="${step}" value="${String(value)}"/>
+    <input id="${id}" class="gf-input" type="number" step="any" inputmode="decimal" value="${String(value)}"/>
     ${help ? `<small class="gf-help">${help}</small>` : ''}
   </label>
 `;
