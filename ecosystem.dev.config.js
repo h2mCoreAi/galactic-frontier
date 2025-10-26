@@ -1,20 +1,8 @@
 module.exports = {
   apps: [
     {
-      name: 'gf.frontend',
-      script: 'npm run dev',
-      cwd: '/srv/galactic-frontier',
-      env: {
-        NODE_ENV: 'development'
-      },
-      watch: ['single-player/src', 'vite.config.js'],
-      ignore_watch: ['node_modules', 'dist', 'logs'],
-      autorestart: true,
-      max_memory_restart: '1G'
-    },
-    {
       name: 'gf.backend',
-      script: 'server.js', // This will need to be created later
+      script: 'server.js',
       cwd: '/srv/galactic-frontier',
       env: {
         NODE_ENV: 'development',
@@ -24,6 +12,26 @@ module.exports = {
       ignore_watch: ['node_modules', 'dist', 'logs'],
       autorestart: true,
       max_memory_restart: '1G'
+    },
+    {
+      name: 'gf.frontend',
+      script: 'npm',
+      args: 'run dev -- --host --port 5174',
+      cwd: '/srv/galactic-frontier',
+      env: { NODE_ENV: 'development' },
+      watch: false,
+      autorestart: true,
+      max_memory_restart: '512M'
+    },
+    {
+      name: 'gf.dashboard',
+      script: 'npm',
+      args: 'run dev:dashboard -- --host --port 5176',
+      cwd: '/srv/galactic-frontier',
+      env: { NODE_ENV: 'development' },
+      watch: false,
+      autorestart: true,
+      max_memory_restart: '512M'
     }
   ]
 }
