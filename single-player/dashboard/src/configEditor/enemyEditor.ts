@@ -8,6 +8,7 @@ interface EnemyEditorElements {
   readonly typeInput: HTMLInputElement;
   readonly speedInput: HTMLInputElement;
   readonly sizeInput: HTMLInputElement;
+  readonly hitboxSizeInput: HTMLInputElement;
   readonly pointsInput: HTMLInputElement;
   readonly shootIntervalInput: HTMLInputElement;
   readonly projectileDamageInput: HTMLInputElement;
@@ -50,6 +51,11 @@ const createElements = (): EnemyEditorElements | null => {
             <small class="gf-help">Collision radius; larger is easier to hit.</small>
           </label>
           <label class="gf-form__field">
+            <span>Hitbox Size</span>
+            <input id="enemyHitboxSize" name="hitboxSize" type="number" step="1" />
+            <small class="gf-help">Optional radial hitbox; defaults to Size if empty.</small>
+          </label>
+          <label class="gf-form__field">
             <span>Points</span>
             <input id="enemyPoints" name="points" type="number" step="1" required />
             <small class="gf-help">Score awarded for destroying this enemy.</small>
@@ -84,6 +90,7 @@ const createElements = (): EnemyEditorElements | null => {
     typeInput: container.querySelector('#enemyType') as HTMLInputElement,
     speedInput: container.querySelector('#enemySpeed') as HTMLInputElement,
     sizeInput: container.querySelector('#enemySize') as HTMLInputElement,
+    hitboxSizeInput: container.querySelector('#enemyHitboxSize') as HTMLInputElement,
     pointsInput: container.querySelector('#enemyPoints') as HTMLInputElement,
     shootIntervalInput: container.querySelector('#enemyShootInterval') as HTMLInputElement,
     projectileDamageInput: container.querySelector('#enemyProjectileDamage') as HTMLInputElement,
@@ -132,6 +139,9 @@ const populateForm = (enemy: EnemyConfig): void => {
   elements.typeInput.value = enemy.type;
   elements.speedInput.value = String(enemy.speed);
   elements.sizeInput.value = String(enemy.size);
+  if (elements.hitboxSizeInput) {
+    elements.hitboxSizeInput.value = enemy.hitboxSize != null ? String(enemy.hitboxSize) : '';
+  }
   elements.pointsInput.value = String(enemy.points);
   elements.shootIntervalInput.value = String(enemy.shootInterval);
   elements.projectileDamageInput.value = String(enemy.projectileDamage);
@@ -150,6 +160,7 @@ const readForm = (): EnemyConfig | null => {
     type,
     speed: Number(elements.speedInput.value),
     size: Number(elements.sizeInput.value),
+    hitboxSize: elements.hitboxSizeInput && elements.hitboxSizeInput.value !== '' ? Number(elements.hitboxSizeInput.value) : undefined,
     points: Number(elements.pointsInput.value),
     shootInterval: Number(elements.shootIntervalInput.value),
     projectileDamage: Number(elements.projectileDamageInput.value),

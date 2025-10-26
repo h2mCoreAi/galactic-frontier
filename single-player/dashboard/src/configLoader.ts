@@ -36,6 +36,7 @@ const validateEnemies = (enemies: GalacticFrontierConfig['enemies']): void => {
     }
     const numericFields: Array<[number, string]> = [
       [enemy.size, 'size'],
+      [enemy.hitboxSize ?? enemy.size, 'hitboxSize'],
       [enemy.speed, 'speed'],
       [enemy.points, 'points'],
       [enemy.shootInterval, 'shootInterval'],
@@ -82,17 +83,23 @@ export const validateConfig = (config: GalacticFrontierConfig): void => {
 export const loadDashboardConfig = async (): Promise<void> => {
   actions.setLoading(true);
   try {
-    const [config, backups] = await Promise.all([
-      fetchConfig(),
-      fetchBackups().catch((error) => {
+    const config = await fetchConfig();
+    try {
+      validateConfig(config);
+      actions.setConfig(config, false);
+      actions.setError(null);
+    } catch (validationError) {
+      console.warn('[GF Dashboard] Validation failed, opening raw editor anyway', validationError);
+      // Allow editing even if invalid; user can fix and save
+      actions.setConfig(config, true);
+      actions.setError(validationError instanceof Error ? validationError.message : 'Configuration validation failed.');
+    }
+    // Load backups in the background, don't block editor render
+    fetchBackups()
+      .then((list) => actions.setBackups(list))
+      .catch((error) => {
         console.warn('[GF Dashboard] Failed to load backups', error);
-        return [];
-      }),
-    ]);
-    validateConfig(config);
-    actions.setConfig(config, false);
-    actions.setBackups(backups);
-    actions.setError(null);
+      });
   } catch (error) {
     console.error('[GF Dashboard] Failed to load configuration', error);
     actions.setError(error instanceof Error ? error.message : 'Failed to load configuration.');
