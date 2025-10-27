@@ -313,6 +313,14 @@ app.get('/api/health', (req, res) => {
 });
 
 // API Routes
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const maybeVerifyToken = (req, res, next) => {
+  if (IS_PRODUCTION) {
+    return verifyToken(req, res, next);
+  }
+  // Dev: allow unauthenticated access
+  return next();
+};
 
 // Authentication routes
 app.get('/auth/discord', passport.authenticate('discord'));
@@ -569,7 +577,7 @@ app.get('/api/config.json', async (req, res) => {
   }
 });
 
-app.put('/api/config.json', verifyToken, async (req, res) => {
+app.put('/api/config.json', maybeVerifyToken, async (req, res) => {
   try {
     const config = req.body;
     if (!config || typeof config !== 'object') {
@@ -579,7 +587,7 @@ app.put('/api/config.json', verifyToken, async (req, res) => {
     await createConfigBackup(await readConfigFile());
     await writeConfigFile(config);
 
-    logger.info('Configuration updated by user', { userId: req.user.userId });
+    logger.info('Configuration updated', { userId: req.user?.userId || 'dev' });
     res.json({ success: true });
   } catch (error) {
     logger.error('Error updating configuration:', error);
@@ -587,7 +595,7 @@ app.put('/api/config.json', verifyToken, async (req, res) => {
   }
 });
 
-app.get('/api/config/backups', verifyToken, async (req, res) => {
+app.get('/api/config/backups', maybeVerifyToken, async (req, res) => {
   try {
     const backups = await listConfigBackups();
     res.json({ backups });
@@ -597,7 +605,7 @@ app.get('/api/config/backups', verifyToken, async (req, res) => {
   }
 });
 
-app.post('/api/config/backups/:backupId/restore', verifyToken, async (req, res) => {
+app.post('/api/config/backups/:backupId/restore', maybeVerifyToken, async (req, res) => {
   try {
     const { backupId } = req.params;
     const download = req.query.download === '1';
@@ -607,7 +615,7 @@ app.post('/api/config/backups/:backupId/restore', verifyToken, async (req, res) 
     }
 
     const restoredConfig = await restoreConfigBackup(backupId);
-    logger.warn('Configuration restored from backup', { userId: req.user.userId, backupId });
+    logger.warn('Configuration restored from backup', { userId: req.user?.userId || 'dev', backupId });
     res.json(restoredConfig);
   } catch (error) {
     logger.error('Error restoring config backup:', error);

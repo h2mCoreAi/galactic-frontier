@@ -4,8 +4,8 @@
     "thrust": 0.1,
     "afterburnerBoost": 2,
     "afterburnerMax": 100,
-    "afterburnerDepleteRate": 0.1,
-    "afterburnerRegenRate": 0.01,
+    "afterburnerDepleteRate": 5,
+    "afterburnerRegenRate": 1,
     "maxHealth": 100,
     "size": 20
   },
