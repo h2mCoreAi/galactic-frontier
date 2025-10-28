@@ -1,0 +1,59 @@
+{
+  "ship": {
+    "maxSpeed": 5,
+    "thrust": 0.1,
+    "afterburnerBoost": 2,
+    "afterburnerMax": 100,
+    "afterburnerDepleteRate": 5,
+    "afterburnerRegenRate": 1,
+    "maxHealth": 100,
+    "size": 20
+  },
+  "projectiles": {
+    "speed": 7,
+    "life": 100,
+    "fanShotCount": 10,
+    "fanShotAngle": 0.1047,
+    "cooldown": 10
+  },
+  "enemies": [
+    {
+      "type": "small",
+      "size": 10,
+      "speed": 3,
+      "points": 10,
+      "shootInterval": 120,
+      "projectileDamage": 1.25,
+      "collisionDamage": 3.75
+    },
+    {
+      "type": "medium",
+      "size": 15,
+      "speed": 2,
+      "points": 20,
+      "shootInterval": 90,
+      "projectileDamage": 2.5,
+      "collisionDamage": 7.5
+    },
+    {
+      "type": "large",
+      "size": 25,
+      "speed": 1,
+      "points": 50,
+      "shootInterval": 60,
+      "projectileDamage": 5,
+      "collisionDamage": 12.5
+    }
+  ],
+  "game": {
+    "scoreToLevelUp": 250,
+    "minSpawnInterval": 60,
+    "maxSpawnInterval": 300,
+    "minHealthSpawnInterval": 300,
+    "maxHealthSpawnInterval": 600,
+    "minFanShotSpawnInterval": 600,
+    "maxFanShotSpawnInterval": 1200,
+    "healthPowerUpValue": 10,
+    "fanShotDuration": 600
+  }
+}
