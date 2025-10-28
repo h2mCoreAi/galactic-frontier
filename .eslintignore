@@ -1,5 +1,0 @@
-node_modules/
-dist/
-logs/
-coverage/
-single-player/dashboard/src/**/*.ts
