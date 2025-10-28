@@ -2,8 +2,8 @@ module.exports = {
   apps: [
     {
       name: 'gf.frontend',
-      script: 'npx',
-      args: 'serve dist -s -l 5174',
+      script: 'npm',
+      args: 'run preview',
       env: {
         NODE_ENV: 'production'
       }
