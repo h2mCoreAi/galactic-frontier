@@ -576,7 +576,7 @@ app.get('/api/config.json', async (req, res) => {
   }
 });
 
-app.put('/api/config.json', maybeVerifyToken, async (req, res) => {
+app.put('/api/config.json', verifyToken, async (req, res) => {
   try {
     const config = req.body;
     if (!config || typeof config !== 'object') {
@@ -594,7 +594,7 @@ app.put('/api/config.json', maybeVerifyToken, async (req, res) => {
   }
 });
 
-app.get('/api/config/backups', maybeVerifyToken, async (req, res) => {
+app.get('/api/config/backups', verifyToken, async (req, res) => {
   try {
     const backups = await listConfigBackups();
     res.json({ backups });
@@ -604,7 +604,7 @@ app.get('/api/config/backups', maybeVerifyToken, async (req, res) => {
   }
 });
 
-app.post('/api/config/backups/:backupId/restore', maybeVerifyToken, async (req, res) => {
+app.post('/api/config/backups/:backupId/restore', verifyToken, async (req, res) => {
   try {
     const { backupId } = req.params;
     const download = req.query.download === '1';
