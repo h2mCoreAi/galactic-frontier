@@ -781,12 +781,34 @@
             // Ensure mouse coordinates stay within canvas bounds
             mouseX = Math.max(0, Math.min(mouseX, canvas.width));
             mouseY = Math.max(0, Math.min(mouseY, canvas.height));
+
+            // Update cursor when hovering the AUTH login button
+            if (gameState === GAME_STATES.AUTH) {
+                const btnX = canvas.width / 2 - 100;
+                const btnY = canvas.height / 2 + 60;
+                const overButton = (mouseX >= btnX && mouseX <= btnX + 200 && mouseY >= btnY && mouseY <= btnY + 40);
+                canvas.style.cursor = overButton ? 'pointer' : 'default';
+            } else {
+                canvas.style.cursor = 'default';
+            }
         });
 
         canvas.addEventListener('mousedown', (e) => {
-            if (gameState === GAME_STATES.PLAYING && e.button === 0) { // Left mouse button
+            if (e.button !== 0) return;
+            if (gameState === GAME_STATES.PLAYING) { // Left mouse button
                 e.preventDefault(); // Prevent context menu
                 leftMousePressed = true;
+            } else if (gameState === GAME_STATES.AUTH) {
+                // Detect click on the drawn login button
+                const btnX = canvas.width / 2 - 100;
+                const btnY = canvas.height / 2 + 60;
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const isInside = (x >= btnX && x <= btnX + 200 && y >= btnY && y <= btnY + 40);
+                if (isInside) {
+                    loginWithDiscord();
+                }
             }
         });
 
