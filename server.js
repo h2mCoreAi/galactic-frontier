@@ -73,7 +73,9 @@ if (process.env.NODE_ENV !== 'production') {
     JWT_REFRESH_SECRET,
     DATABASE_URL,
     DISCORD_CLIENT_ID,
-    DISCORD_CLIENT_SECRET
+    DISCORD_CLIENT_SECRET,
+    FRONTEND_URL,
+    CORS_ORIGIN
   };
   const placeholders = new Set([
     'dev_jwt_secret',
@@ -81,10 +83,14 @@ if (process.env.NODE_ENV !== 'production') {
     'placeholder',
     'replace_me',
     'galactic_frontier_jwt_secret_key_for_development_only_change_in_production',
-    'galactic_frontier_refresh_secret_key_for_development_only_change_in_production'
+    'galactic_frontier_refresh_secret_key_for_development_only_change_in_production',
+    'your_actual_discord_application_id_here',
+    'your_actual_discord_client_secret',
+    'http://localhost:5174',
+    'http://localhost:3001'
   ]);
   const missingKeys = Object.entries(required)
-    .filter(([key, value]) => !value || placeholders.has(String(value)))
+    .filter(([key, value]) => !value || placeholders.has(String(value)) || String(value).includes('your_'))
     .map(([key]) => key);
 
   if (missingKeys.length > 0) {
@@ -94,6 +100,8 @@ if (process.env.NODE_ENV !== 'production') {
     } else {
       logger.warn('Missing or placeholder required environment variables (dev mode, continuing)', { missingKeys });
     }
+  } else {
+    logger.info('✅ All required environment variables validated');
   }
 })();
 
