@@ -105,9 +105,30 @@
             margin-bottom: 8px;
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: space-between;
+            gap: 8px;
             font-size: 14px;
             color: #fff;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .auth-text {
+            flex: 1 1 auto;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .auth-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 110px;
         }
 
         .auth-login, .auth-logout {
@@ -580,7 +601,7 @@
             if (!el) return;
             if (isAuthenticated && currentUser) {
                 const name = escapeHtml(currentUser.username || 'Player');
-                el.innerHTML = `<div class="auth-banner">Signed in as <strong>${name}</strong> <button id="logoutBtn" class="auth-logout" style="margin-left:8px;">Logout</button></div>`;
+                el.innerHTML = `<div class="auth-banner"><div class="auth-text">Signed in as <strong class="auth-name">${name}</strong></div><button id="logoutBtn" class="auth-logout">Logout</button></div>`;
                 const btn = document.getElementById('logoutBtn');
                 if (btn) btn.onclick = () => { logout(); updateAuthStatusUI(); };
             } else {
