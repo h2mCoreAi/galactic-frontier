@@ -253,7 +253,7 @@
         // Check if backend is available
         async function checkBackendAvailability() {
             try {
-                const response = await fetch('/api/health', {
+                const response = await fetch('/health', {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -987,6 +987,8 @@
             } else if (gameState === GAME_STATES.GAME_OVER) {
                 if (e.key === 'r' || e.key === 'R') {
                     gameState = GAME_STATES.START;
+                    // Refresh top scores when returning to main screen
+                    initializeTopScores();
                 }
             } else if (gameState === GAME_STATES.SESSIONS) {
                 if (e.key === 'Escape') {

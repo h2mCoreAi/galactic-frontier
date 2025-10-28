@@ -216,7 +216,7 @@ app.use(cors({
   credentials: true
 }));
 
-app.set('trust proxy', true);
+app.set('trust proxy', 1);
 
 const limiter = rateLimit({
   windowMs: RATE_LIMIT_WINDOW_MS,
@@ -224,7 +224,6 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
-  trustProxy: true,
 });
 
 app.use(limiter);
@@ -443,7 +442,7 @@ app.get('/api/highscores', async (req, res) => {
 
 app.post('/api/highscores', verifyToken, async (req, res) => {
   try {
-    const { score, level_reached, play_time, accuracy, session_id } = req.body;
+    const { score, level_reached, play_time } = req.body;
 
     // Validate input
     if (!score || !level_reached || !play_time) {
@@ -474,24 +473,29 @@ app.post('/api/highscores', verifyToken, async (req, res) => {
     const playTimeSeconds = parsePlayTimeToSeconds(play_time);
 
     const insertResult = await pool.query(
-      'INSERT INTO sp_highscores (user_id, score, level_reached, play_time, session_id) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at',
-      [req.user.userId, score, level_reached, playTimeSeconds, session_id]
+      'INSERT INTO sp_highscores (user_id, username, score, level_reached, play_time) VALUES ($1, $2, $3, $4, make_interval(secs => $5)) RETURNING id, created_at',
+      [req.user.userId, req.user.username, score, level_reached, playTimeSeconds]
     );
 
-    // Update user profile total score and level
+    // Update user profile aggregate fields
     const profileResult = await pool.query(
-      'SELECT total_score FROM profiles WHERE user_id = $1',
+      'SELECT total_score, best_score, total_games FROM profiles WHERE user_id = $1',
       [req.user.userId]
     );
 
     if (profileResult.rows.length > 0) {
-      const currentTotalScore = profileResult.rows[0].total_score || 0;
+      const current = profileResult.rows[0];
+      const currentTotalScore = Number(current.total_score) || 0;
+      const currentBestScore = Number(current.best_score) || 0;
+      const currentTotalGames = Number(current.total_games) || 0;
+
       const newTotalScore = Math.max(currentTotalScore, score);
-      const newLevel = Math.floor(newTotalScore / 250) + 1;
+      const newBestScore = Math.max(currentBestScore, score);
+      const newTotalGames = currentTotalGames + 1;
 
       await pool.query(
-        'UPDATE profiles SET total_score = $1, level = $2, updated_at = NOW() WHERE user_id = $3',
-        [newTotalScore, newLevel, req.user.userId]
+        'UPDATE profiles SET total_score = $1, best_score = $2, total_games = $3, updated_at = NOW() WHERE user_id = $4',
+        [newTotalScore, newBestScore, newTotalGames, req.user.userId]
       );
     }
 
@@ -506,14 +510,11 @@ app.post('/api/highscores', verifyToken, async (req, res) => {
 // Session routes
 app.post('/api/sessions/start', verifyToken, async (req, res) => {
   try {
-    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    await pool.query(
-      'INSERT INTO sp_sessions (user_id, session_id, start_time) VALUES ($1, $2, NOW())',
-      [req.user.userId, sessionId]
+    const insert = await pool.query(
+      'INSERT INTO sp_sessions (user_id, start_time, is_active) VALUES ($1, NOW(), true) RETURNING id',
+      [req.user.userId]
     );
-
-    res.json({ session_id: sessionId });
+    res.json({ session_id: String(insert.rows[0].id) });
   } catch (error) {
     logger.error('Session start error:', error);
     res.status(500).json({ error: 'Failed to start session' });
@@ -523,11 +524,27 @@ app.post('/api/sessions/start', verifyToken, async (req, res) => {
 app.put('/api/sessions/:sessionId/end', verifyToken, async (req, res) => {
   try {
     const { sessionId } = req.params;
-    const { score, level_reached, play_time, accuracy, enemies_defeated } = req.body;
+    const { score, play_time } = req.body;
+
+    const parsePlayTimeToSeconds = (value) => {
+      if (typeof value === 'number' && isFinite(value)) return Math.max(0, Math.floor(value));
+      if (typeof value === 'string') {
+        const parts = value.split(':').map(Number);
+        if (parts.some(n => Number.isNaN(n) || n < 0)) return 0;
+        let secs = 0;
+        if (parts.length === 1) secs = parts[0];
+        else if (parts.length === 2) secs = parts[0] * 60 + parts[1];
+        else if (parts.length === 3) secs = parts[0] * 3600 + parts[1] * 60 + parts[2];
+        return Math.max(0, Math.floor(secs));
+      }
+      return 0;
+    };
+
+    const secs = parsePlayTimeToSeconds(play_time);
 
     await pool.query(
-      'UPDATE sp_sessions SET end_time = NOW(), score = $1, level_reached = $2, play_time = $3 WHERE session_id = $4 AND user_id = $5',
-      [score, level_reached, play_time, sessionId, req.user.userId]
+      'UPDATE sp_sessions SET end_time = NOW(), is_active = false, score = $1, duration_seconds = $2 WHERE id = $3 AND user_id = $4',
+      [score || 0, secs, sessionId, req.user.userId]
     );
 
     res.json({ success: true });
