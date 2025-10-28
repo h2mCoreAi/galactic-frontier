@@ -326,7 +326,6 @@ const maybeVerifyToken = (req, res, next) => {
   if (IS_PRODUCTION) {
     return verifyToken(req, res, next);
   }
-  // Dev: allow unauthenticated access
   return next();
 };
 
