@@ -95,6 +95,53 @@
             color: #00ff00;
             font-weight: bold;
         }
+
+        /* Discord Authentication Button Styling */
+        .auth-banner {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .auth-login, .auth-logout {
+            background: #5865F2;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 3px;
+            padding: 6px 12px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            font-family: 'Whitney', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+        }
+
+        .auth-login:hover, .auth-logout:hover {
+            background: #4752c4;
+        }
+
+        .auth-login:active, .auth-logout:active {
+            background: #3c45a5;
+        }
+
+        .auth-logout {
+            background: #dc3545;
+        }
+
+        .auth-logout:hover {
+            background: #c82333;
+        }
+
+        .auth-logout:active {
+            background: #bd2130;
+        }
     </style>
 </head>
 <body>
