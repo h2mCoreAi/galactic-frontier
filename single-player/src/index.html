@@ -334,7 +334,9 @@
                     timestamp: Date.now(),
                     sessionId: currentSessionId || Math.random().toString(36).substr(2, 9),
                     playTime: playTime,
-                    accuracy: accuracy
+                    accuracy: accuracy,
+                    // Store username locally so UI shows Discord name even if backend is unreachable
+                    username: currentUser && currentUser.username ? currentUser.username : undefined
                 };
 
                 localHighScores.push(newScore);
