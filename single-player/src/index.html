@@ -113,6 +113,7 @@
 
     <!-- Right sidebar for top scores -->
     <div class="right-sidebar">
+        <div id="authStatus" style="margin-bottom: 12px;"></div>
         <h3>TOP SCORES</h3>
         <div id="topScores">
             <div class="score-item">
@@ -497,6 +498,33 @@
         }
 
         // Authentication functions
+        function escapeHtml(str) {
+            try {
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/\"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            } catch (_) {
+                return '';
+            }
+        }
+
+        function updateAuthStatusUI() {
+            const el = document.getElementById('authStatus');
+            if (!el) return;
+            if (isAuthenticated && currentUser) {
+                const name = escapeHtml(currentUser.username || 'Player');
+                el.innerHTML = `<div class="auth-banner">Signed in as <strong>${name}</strong> <button id="logoutBtn" class="auth-logout" style="margin-left:8px;">Logout</button></div>`;
+                const btn = document.getElementById('logoutBtn');
+                if (btn) btn.onclick = () => { logout(); updateAuthStatusUI(); };
+            } else {
+                el.innerHTML = `<div class=\"auth-banner\"><button id=\"loginBtn\" class=\"auth-login\">Login with Discord</button></div>`;
+                const btn = document.getElementById('loginBtn');
+                if (btn) btn.onclick = () => loginWithDiscord();
+            }
+        }
         function initAuth() {
             // Check for stored auth token on page load
             const storedToken = localStorage.getItem('gf_auth_token');
@@ -505,6 +533,7 @@
                 // Validate token by fetching user profile
                 fetchUserProfile();
             }
+            updateAuthStatusUI();
         }
 
         async function fetchUserProfile() {
@@ -521,13 +550,16 @@
                     currentUser = await response.json();
                     isAuthenticated = true;
                     console.log('User authenticated:', currentUser.username);
+                    updateAuthStatusUI();
                 } else {
                     // Token invalid, clear it
                     logout();
+                    updateAuthStatusUI();
                 }
             } catch (error) {
                 console.error('Error fetching user profile:', error);
                 logout();
+                updateAuthStatusUI();
             }
         }
 
@@ -542,6 +574,7 @@
             isAuthenticated = false;
             localStorage.removeItem('gf_auth_token');
             gameState = GAME_STATES.START;
+            updateAuthStatusUI();
         }
 
         function handleAuthCallback() {
