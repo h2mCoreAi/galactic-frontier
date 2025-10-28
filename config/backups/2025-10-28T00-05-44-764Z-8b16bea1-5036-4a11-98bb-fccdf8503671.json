@@ -10,11 +10,11 @@
     "size": 20
   },
   "projectiles": {
-    "speed": 10,
+    "speed": 7,
     "life": 100,
-    "cooldown": 10,
     "fanShotCount": 10,
-    "fanShotAngle": 0.1047
+    "fanShotAngle": 0.1047,
+    "cooldown": 10
   },
   "enemies": [
     {
