@@ -13,11 +13,13 @@ const winston = require('winston');
 const path = require('path');
 const fs = require('fs');
 const { promises: fsPromises } = fs;
-require('dotenv').config();
-
-// Environment guards
+// Environment guards (before dotenv to determine which file to load)
 const IS_PROD = process.env.NODE_ENV === 'production';
 const IS_DEV = !IS_PROD;
+
+require('dotenv').config({
+  path: IS_PROD ? '.env.production' : '.env'
+});
 
 // Environment variables
 const PORT = process.env.PORT || 3001;
@@ -214,7 +216,7 @@ app.use(cors({
   credentials: true
 }));
 
-app.set('trust proxy', 1);
+app.set('trust proxy', true);
 
 const limiter = rateLimit({
   windowMs: RATE_LIMIT_WINDOW_MS,
@@ -222,6 +224,7 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  trustProxy: true,
 });
 
 app.use(limiter);
@@ -342,24 +345,28 @@ app.get('/auth/discord/callback',
       { expiresIn: JWT_EXPIRES_IN }
     );
 
-    // Store token in localStorage via a simple HTML page that sets it and redirects
+    // Serve a nonce-scoped inline script to comply with CSP
+    const nonce = randomUUID().replace(/-/g, '');
+    res.set('Content-Security-Policy', `default-src 'self'; base-uri 'self'; frame-ancestors 'self'; object-src 'none'; script-src 'self' 'nonce-${nonce}'; script-src-attr 'none'; style-src 'self' 'unsafe-inline'`);
+
     const redirectHtml = `
       <!DOCTYPE html>
       <html>
         <head>
+          <meta charset="utf-8" />
           <title>Authenticating...</title>
-          <script>
-            localStorage.setItem('gf_auth_token', '${token}');
-            window.location.href = '${FRONTEND_URL}?auth_success=true';
-          </script>
         </head>
         <body>
           <p>Authentication successful, redirecting...</p>
+          <script nonce="${nonce}">
+            try { localStorage.setItem('gf_auth_token', '${token}'); } catch (e) {}
+            window.location.href = '${FRONTEND_URL}?auth_success=true';
+          </script>
         </body>
       </html>
     `;
 
-    res.send(redirectHtml);
+    res.type('html').send(redirectHtml);
   }
 );
 
