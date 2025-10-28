@@ -71,41 +71,60 @@ if command -v pm2 >/dev/null 2>&1; then
   pm2 save || true
 fi
 
-# Optional cleanup: keep only runtime essentials in project root
-info "Pruning development artifacts"
-KEEP_ITEMS=(
-  .
-  ..
-  .git
-  .gitignore
-  .env.production
-  config
-  frontend
-  dist
-  devScripts
-  production-deploy.sh
-  server.js
-  package.json
-  package-lock.json
-  node_modules
-  ecosystem.config.js
-  ecosystem.dev.config.js
-  logs
-  nginx.conf
-)
+## Optional cleanup: disabled by default to avoid deleting tracked files
+## Set PRUNE=1 to enable, but it will skip any tracked git files and keep ship scripts
+if [ "${PRUNE:-0}" = "1" ]; then
+  info "Pruning development artifacts (safe mode)"
+  KEEP_ITEMS=(
+    .
+    ..
+    .git
+    .gitignore
+    .env.production
+    config
+    frontend
+    dist
+    devScripts
+    production-deploy.sh
+    ship-main.sh
+    server.js
+    package.json
+    package-lock.json
+    node_modules
+    ecosystem.config.js
+    ecosystem.dev.config.js
+    logs
+    nginx.conf
+  )
 
-for entry in .* *; do
-  skip=false
-  for keep in "${KEEP_ITEMS[@]}"; do
-    if [ "$entry" = "$keep" ]; then
-      skip=true
-      break
+  # Build a set of tracked files to avoid deleting anything under git control
+  mapfile -t TRACKED < <(git ls-files)
+  is_tracked() {
+    local target="$1"
+    for f in "${TRACKED[@]}"; do
+      if [ "$f" = "$target" ]; then
+        return 0
+      fi
+    done
+    return 1
+  }
+
+  for entry in .* *; do
+    skip=false
+    for keep in "${KEEP_ITEMS[@]}"; do
+      if [ "$entry" = "$keep" ]; then
+        skip=true
+        break
+      fi
+    done
+    if [ "$skip" = false ] && [ -e "$entry" ]; then
+      if is_tracked "$entry"; then
+        continue
+      fi
+      rm -rf -- "$entry"
     fi
   done
-  if [ "$skip" = false ] && [ -e "$entry" ]; then
-    rm -rf -- "$entry"
-  fi
-done
+fi
 
 echo ""
 success "Deployment complete"
