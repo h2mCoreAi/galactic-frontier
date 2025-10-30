@@ -67,6 +67,37 @@
   opacity: 0.7;
 }
 
+.gf-scenarios__input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gf-scenarios__input-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gf-scenarios__input-group input {
+  width: 80px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--gf-border);
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  font-size: 0.875rem;
+}
+
+.gf-scenarios__input-group input:focus {
+  outline: 2px solid var(--gf-accent);
+  outline-offset: 2px;
+}
+
+:root[data-theme='light'] .gf-scenarios__input-group input {
+  background: rgba(15, 23, 42, 0.04);
+}
+
 .gf-metrics__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -93,5 +124,89 @@
 .gf-metrics__value {
   font-size: 1.2rem;
   font-weight: 600;
+}
+
+.gf-fps-monitor-container {
+  margin-top: 20px;
+  padding: 20px;
+  border-radius: 12px;
+  background: rgba(12, 16, 24, 0.6);
+  border: 1px solid var(--gf-border);
+}
+
+.gf-fps-monitor {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.gf-fps-monitor__current {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.gf-fps-monitor__label {
+  font-size: 0.875rem;
+  opacity: 0.8;
+}
+
+.gf-fps-monitor__value {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.gf-fps-monitor__stats {
+  display: flex;
+  gap: 12px;
+}
+
+.gf-fps-monitor__stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.gf-fps-monitor__stat-label {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.gf-fps-monitor__stat-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.gf-fps-monitor__chart {
+  width: 100%;
+  height: 100px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme='light'] .gf-fps-monitor-container {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+:root[data-theme='light'] .gf-fps-monitor__current {
+  background: rgba(15, 23, 42, 0.06);
+}
+
+:root[data-theme='light'] .gf-fps-monitor__stat {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+:root[data-theme='light'] .gf-fps-monitor__chart {
+  background: rgba(243, 246, 252, 0.8);
 }
 

@@ -12,7 +12,8 @@ import { initializeProgressIndicator } from './components/progressIndicator';
 import { initializeRealtimeSync } from './components/realtimeSync';
 import { initializeLivePreview } from './testing/livePreview';
 import { initializeTelemetryPanel } from './testing/telemetryPanel';
-import { initializeSpawnControls } from './testing/spawnControls';
+import { initializeFPSMonitor } from './testing/fpsMonitor';
+import { initializeScenarioControls } from './testing/scenarioControls';
 import type { DashboardSubscriber, TabKey } from './types';
 
 const TAB_TO_ELEMENT: Record<TabKey, string> = {
@@ -199,7 +200,8 @@ const initialize = (): void => {
   initializeRealtimeSync();
   initializeLivePreview();
   initializeTelemetryPanel();
-  initializeSpawnControls();
+  initializeFPSMonitor();
+  initializeScenarioControls();
 };
 
 document.addEventListener('DOMContentLoaded', initialize);

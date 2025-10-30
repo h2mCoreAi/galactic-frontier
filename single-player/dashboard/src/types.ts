@@ -85,6 +85,13 @@ export interface DashboardMetrics {
   readonly shipsHealth: number;
   readonly afterburner: number;
   readonly timestamp: number;
+  readonly memoryUsage?: number;
+}
+
+export interface FPSHistory {
+  readonly values: number[];
+  readonly timestamps: number[];
+  readonly maxLength: number;
 }
 
 export interface DashboardPreferences {
