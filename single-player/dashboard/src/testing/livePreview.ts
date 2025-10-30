@@ -14,10 +14,20 @@ type GameMessage =
   | { type: 'log'; payload: string }
   | { type: 'error'; payload: string };
 
+let lastConfigHash: string | null = null;
+
 const postConfig = (iframe: HTMLIFrameElement, config: GalacticFrontierConfig): void => {
   if (!iframe.contentWindow) {
     return;
   }
+  
+  // Prevent sending the same config repeatedly to avoid loops
+  const configHash = JSON.stringify(config);
+  if (configHash === lastConfigHash) {
+    return;
+  }
+  lastConfigHash = configHash;
+  
   iframe.contentWindow.postMessage({ type: 'config-update', payload: config }, '*');
 };
 
@@ -79,11 +89,21 @@ const handleMessage = (event: MessageEvent<GameMessage>): void => {
   }
 };
 
+let lastPreviewConfigHash: string | null = null;
+
 const updatePreview: DashboardSubscriber['notify'] = (snapshot) => {
   const iframe = ensureIFrame();
   if (!iframe || !snapshot.config) {
     return;
   }
+  
+  // Only update if config actually changed
+  const configHash = JSON.stringify(snapshot.config);
+  if (configHash === lastPreviewConfigHash) {
+    return;
+  }
+  lastPreviewConfigHash = configHash;
+  
   postConfig(iframe, snapshot.config);
 };
 
