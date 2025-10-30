@@ -2757,7 +2757,7 @@
         }
 
         function gameLoop() {
-            // Skip drawing if preview is paused by dashboard
+            // Skip drawing if preview is paused by dashboard (check FIRST)
             if (window.GF_PREVIEW && window.GF_PREVIEW_PAUSED) {
                 requestAnimationFrame(gameLoop);
                 return;
@@ -2782,6 +2782,12 @@
                 return;
             }
             
+            // Additional pause check before any game updates
+            if (window.GF_PREVIEW && window.GF_PREVIEW_PAUSED) {
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+            
             if (gameState === GAME_STATES.PLAYING) {
                 updateShip();
                 updateProjectiles();
@@ -2794,6 +2800,13 @@
                     fanShotVisualPhase += 0.15;
                 }
             }
+            
+            // Final pause check before drawing
+            if (window.GF_PREVIEW && window.GF_PREVIEW_PAUSED) {
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+            
             draw();
             publishTelemetry();
             requestAnimationFrame(gameLoop);
