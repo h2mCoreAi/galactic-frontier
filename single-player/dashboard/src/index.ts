@@ -17,6 +17,8 @@ import { initializeTelemetryPanel } from './testing/telemetryPanel';
 import { initializeFPSMonitor } from './testing/fpsMonitor';
 import { initializeScenarioControls } from './testing/scenarioControls';
 import { initializeEventLogger } from './testing/eventLogger';
+import { initializePerformanceComparison } from './testing/performanceComparison';
+import { initializeDebugOverlays } from './testing/debugOverlays';
 import type { DashboardSubscriber, TabKey } from './types';
 // Import all CSS files from main entry point
 import './configEditor/styles.css';
@@ -234,8 +236,10 @@ const initialize = (): void => {
   // Testing tools - enable incrementally
   initializeLivePreview();
   initializeFPSMonitor();
+  initializePerformanceComparison();
   initializeScenarioControls();
   initializeEventLogger();
+  initializeDebugOverlays();
   
   // Real-time sync - enable last as it can cause loops if not careful
   initializeRealtimeSync();
