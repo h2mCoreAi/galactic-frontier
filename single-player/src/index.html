@@ -2717,6 +2717,12 @@
         }
 
         function gameLoop() {
+            // Skip drawing if preview is paused by dashboard
+            if (window.GF_PREVIEW && window.GF_PREVIEW_PAUSED) {
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+            
             // Skip drawing if canvas context is invalid (iframe might be hidden)
             if (!ctx || !canvas) {
                 requestAnimationFrame(gameLoop);
