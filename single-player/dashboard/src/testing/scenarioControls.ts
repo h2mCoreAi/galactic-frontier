@@ -1,4 +1,6 @@
 import { showToast } from '../toast';
+import { exportAllTestData, exportMetricsCSV } from './testExport';
+import { dashboardState } from '../state';
 
 const containerId = 'scenarioControls';
 const iframeId = 'gamePreviewFrame';
@@ -103,8 +105,36 @@ const renderControls = (): void => {
           </label>
         </div>
       </div>
+      <div class="gf-scenarios__export">
+        <h5>Export Test Data</h5>
+        <div class="gf-scenarios__export-buttons">
+          <button class="gf-button gf-button--secondary gf-button--small" id="exportAllData" type="button">
+            📥 Export All Test Data
+          </button>
+          <button class="gf-button gf-button--secondary gf-button--small" id="exportMetricsCSV" type="button">
+            📊 Export Metrics (CSV)
+          </button>
+        </div>
+      </div>
     </div>
   `;
+
+  const exportAllBtn = container.querySelector('#exportAllData');
+  const exportMetricsBtn = container.querySelector('#exportMetricsCSV');
+
+  exportAllBtn?.addEventListener('click', () => {
+    exportAllTestData();
+    showToast({ title: 'Export Complete', message: 'Test data exported successfully', variant: 'success' });
+  });
+
+  exportMetricsBtn?.addEventListener('click', () => {
+    if (dashboardState.metrics) {
+      exportMetricsCSV([dashboardState.metrics]);
+      showToast({ title: 'Export Complete', message: 'Metrics exported to CSV', variant: 'success' });
+    } else {
+      showToast({ title: 'No Data', message: 'No metrics available to export', variant: 'error' });
+    }
+  });
 
   container.addEventListener('click', (event) => {
     const target = event.target as HTMLButtonElement | null;
