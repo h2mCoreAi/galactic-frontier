@@ -5,7 +5,8 @@ import { showToast } from '../toast';
 const PREVIEW_IFRAME_ID = 'gamePreviewFrame';
 const PREVIEW_CONTAINER_ID = 'gamePreviewContainer';
 // Game preview runs on the frontend server (port 5174)
-const GAME_URL = 'http://192.168.1.50:5174/src/game-preview.html';
+// Frontend Vite root is 'single-player/src', so game-preview.html is at root
+const GAME_URL = 'http://192.168.1.50:5174/game-preview.html';
 
 type GameMessage =
   | { type: 'game-ready' }
