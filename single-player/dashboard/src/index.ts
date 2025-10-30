@@ -19,6 +19,7 @@ import { initializeScenarioControls } from './testing/scenarioControls';
 import { initializeEventLogger } from './testing/eventLogger';
 import { initializePerformanceComparison } from './testing/performanceComparison';
 import { initializeDebugOverlays } from './testing/debugOverlays';
+import { initializePresetScenarios } from './testing/presetScenarios';
 import type { DashboardSubscriber, TabKey } from './types';
 // Import all CSS files from main entry point
 import './configEditor/styles.css';
@@ -238,6 +239,7 @@ const initialize = (): void => {
   initializeFPSMonitor();
   initializePerformanceComparison();
   initializeScenarioControls();
+  initializePresetScenarios();
   initializeEventLogger();
   initializeDebugOverlays();
   

@@ -98,6 +98,53 @@
   background: rgba(15, 23, 42, 0.04);
 }
 
+.gf-scenarios__header {
+  margin-bottom: 16px;
+}
+
+.gf-scenarios__header h4 {
+  margin: 0 0 4px 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.gf-scenarios__header p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: rgba(230, 241, 255, 0.7);
+}
+
+.gf-scenarios__export {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.gf-scenarios__export h5 {
+  margin: 0 0 12px 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: rgba(230, 241, 255, 0.9);
+}
+
+.gf-scenarios__export-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+:root[data-theme='light'] .gf-scenarios__header p {
+  color: rgba(17, 24, 39, 0.7);
+}
+
+:root[data-theme='light'] .gf-scenarios__export {
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+:root[data-theme='light'] .gf-scenarios__export h5 {
+  color: rgba(17, 24, 39, 0.9);
+}
+
 .gf-metrics__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -670,5 +717,82 @@
 :root[data-theme='light'] .gf-debug-overlay-toggle:hover {
   border-color: rgba(29, 78, 216, 0.3);
   background: rgba(15, 23, 42, 0.08);
+}
+
+/* Preset Scenarios Styles */
+.gf-preset-scenarios-container {
+  margin-top: 20px;
+}
+
+.gf-preset-scenarios {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.gf-preset-scenarios__header h3 {
+  margin-bottom: 4px;
+}
+
+.gf-preset-scenarios__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.gf-preset-scenario-card {
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  transition: all 0.2s ease;
+}
+
+.gf-preset-scenario-card:hover {
+  border-color: rgba(63, 140, 255, 0.3);
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateY(-2px);
+}
+
+.gf-preset-scenario-card__header {
+  margin-bottom: 12px;
+}
+
+.gf-preset-scenario-card__header h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgba(230, 241, 255, 0.9);
+}
+
+.gf-preset-scenario-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gf-preset-scenario-card__body p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: rgba(230, 241, 255, 0.7);
+  line-height: 1.5;
+}
+
+:root[data-theme='light'] .gf-preset-scenario-card {
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+:root[data-theme='light'] .gf-preset-scenario-card:hover {
+  border-color: rgba(29, 78, 216, 0.3);
+  background: rgba(15, 23, 42, 0.08);
+}
+
+:root[data-theme='light'] .gf-preset-scenario-card__header h4 {
+  color: rgba(17, 24, 39, 0.9);
+}
+
+:root[data-theme='light'] .gf-preset-scenario-card__body p {
+  color: rgba(17, 24, 24, 0.7);
 }
 
