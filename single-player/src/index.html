@@ -539,14 +539,14 @@
                 } else if (type === 'toggle-pause') {
                     // Handle pause/unpause from dashboard
                     // Payload true = pause, false = resume
-                    if (payload === true) {
+                    if (payload === true || payload === 'true') {
                         // Pause regardless of current state (including START state)
                         if (gameState === GAME_STATES.PLAYING) {
                             gameState = GAME_STATES.PAUSED;
                         }
                         // Store pause flag to prevent drawing even in START state
                         window.GF_PREVIEW_PAUSED = true;
-                    } else if (payload === false) {
+                    } else if (payload === false || payload === 'false') {
                         // Resume
                         if (gameState === GAME_STATES.PAUSED) {
                             gameState = GAME_STATES.PLAYING;
@@ -1178,12 +1178,17 @@
                 return;
             }
             
+            // Validate canvas context before any operations
             try {
+                // Test context validity before drawing
+                if (!ctx || typeof ctx.fillStyle !== 'string') {
+                    return;
+                }
                 ctx.fillStyle = 'black';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             } catch (e) {
-                // Canvas might be detached or invalid - stop drawing
-                console.warn('Canvas context invalid, stopping render loop');
+                // Canvas context is invalid or detached - stop drawing silently
+                // Don't log to avoid console spam
                 return;
             }
 

@@ -117,7 +117,15 @@ const pauseGame = (iframe: HTMLIFrameElement, paused: boolean): void => {
   if (!iframe.contentWindow) {
     return;
   }
-  iframe.contentWindow.postMessage({ type: 'toggle-pause', payload: paused }, '*');
+  // Send pause message - ensure boolean is explicitly sent
+  iframe.contentWindow.postMessage({ type: 'toggle-pause', payload: Boolean(paused) }, '*');
+  
+  // Send again after a short delay to ensure it's received
+  window.setTimeout(() => {
+    if (iframe.contentWindow) {
+      iframe.contentWindow.postMessage({ type: 'toggle-pause', payload: Boolean(paused) }, '*');
+    }
+  }, 50);
 };
 
 const handleTabVisibility = (): void => {
