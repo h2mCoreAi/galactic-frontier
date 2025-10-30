@@ -108,6 +108,24 @@ const filterParameters = (searchTerm: string, categoryFilter: string): Parameter
   });
 };
 
+let currentCategory: string = 'all';
+
+const showCategoryTab = (category: string): void => {
+  currentCategory = category;
+  
+  // Update tab buttons
+  const tabs = document.querySelectorAll('.gf-docs-tabs__tab');
+  tabs.forEach((tab) => {
+    const tabCategory = tab.getAttribute('data-docs-category');
+    const isActive = tabCategory === category;
+    tab.setAttribute('aria-selected', String(isActive));
+    tab.classList.toggle('gf-docs-tabs__tab--active', isActive);
+  });
+  
+  // Re-render with new category
+  renderDocumentation();
+};
+
 const renderDocumentation = (): void => {
   const container = document.getElementById(containerId);
   if (!container) {
@@ -115,9 +133,8 @@ const renderDocumentation = (): void => {
   }
 
   const searchInput = container.querySelector<HTMLInputElement>('#docsSearch');
-  const categorySelect = container.querySelector<HTMLSelectElement>('#docsCategoryFilter');
   const searchTerm = searchInput?.value || '';
-  const categoryFilter = categorySelect?.value || 'all';
+  const categoryFilter = currentCategory;
   
   const filteredParams = filterParameters(searchTerm, categoryFilter);
 
@@ -141,18 +158,56 @@ const renderDocumentation = (): void => {
             />
           </label>
         </div>
-        <div class="gf-docs__category">
-          <label for="docsCategoryFilter" class="gf-form__field">
-            <span>Category</span>
-            <select id="docsCategoryFilter">
-              <option value="all" ${categoryFilter === 'all' ? 'selected' : ''}>All Categories</option>
-              <option value="ship" ${categoryFilter === 'ship' ? 'selected' : ''}>Ship</option>
-              <option value="projectile" ${categoryFilter === 'projectile' ? 'selected' : ''}>Projectile</option>
-              <option value="enemy" ${categoryFilter === 'enemy' ? 'selected' : ''}>Enemy</option>
-              <option value="game" ${categoryFilter === 'game' ? 'selected' : ''}>Game</option>
-            </select>
-          </label>
-        </div>
+      </div>
+      
+      <div class="gf-docs-tabs">
+        <nav class="gf-docs-tabs__nav" role="tablist" aria-label="Documentation categories">
+          <button 
+            class="gf-docs-tabs__tab ${categoryFilter === 'all' ? 'gf-docs-tabs__tab--active' : ''}" 
+            role="tab" 
+            aria-selected="${categoryFilter === 'all'}"
+            data-docs-category="all"
+            type="button"
+          >
+            All
+          </button>
+          <button 
+            class="gf-docs-tabs__tab ${categoryFilter === 'ship' ? 'gf-docs-tabs__tab--active' : ''}" 
+            role="tab" 
+            aria-selected="${categoryFilter === 'ship'}"
+            data-docs-category="ship"
+            type="button"
+          >
+            Ship
+          </button>
+          <button 
+            class="gf-docs-tabs__tab ${categoryFilter === 'projectile' ? 'gf-docs-tabs__tab--active' : ''}" 
+            role="tab" 
+            aria-selected="${categoryFilter === 'projectile'}"
+            data-docs-category="projectile"
+            type="button"
+          >
+            Projectile
+          </button>
+          <button 
+            class="gf-docs-tabs__tab ${categoryFilter === 'enemy' ? 'gf-docs-tabs__tab--active' : ''}" 
+            role="tab" 
+            aria-selected="${categoryFilter === 'enemy'}"
+            data-docs-category="enemy"
+            type="button"
+          >
+            Enemy
+          </button>
+          <button 
+            class="gf-docs-tabs__tab ${categoryFilter === 'game' ? 'gf-docs-tabs__tab--active' : ''}" 
+            role="tab" 
+            aria-selected="${categoryFilter === 'game'}"
+            data-docs-category="game"
+            type="button"
+          >
+            Game
+          </button>
+        </nav>
       </div>
       
       <div class="gf-docs__results">
@@ -208,7 +263,7 @@ const renderDocumentation = (): void => {
   
   // Attach event listeners
   const searchInputEl = container.querySelector<HTMLInputElement>('#docsSearch');
-  const categorySelectEl = container.querySelector<HTMLSelectElement>('#docsCategoryFilter');
+  const tabButtons = container.querySelectorAll('.gf-docs-tabs__tab');
   
   let searchTimeout: number | null = null;
   
@@ -222,8 +277,15 @@ const renderDocumentation = (): void => {
   };
   
   searchInputEl?.addEventListener('input', updateSearch);
-  categorySelectEl?.addEventListener('change', () => {
-    renderDocumentation();
+  
+  // Tab button click handlers
+  tabButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      const category = button.getAttribute('data-docs-category');
+      if (category) {
+        showCategoryTab(category);
+      }
+    });
   });
 };
 
