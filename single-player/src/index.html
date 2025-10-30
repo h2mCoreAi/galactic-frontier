@@ -163,6 +163,41 @@
         .auth-logout:active {
             background: #bd2130;
         }
+        /* Hover menu for account actions */
+        .auth-banner {
+            position: relative;
+            justify-content: flex-start;
+        }
+        .auth-user {
+            background: transparent;
+            color: #FFFFFF;
+            border: none;
+            padding: 0;
+            font: inherit;
+            cursor: pointer;
+        }
+        .auth-user:focus {
+            outline: 1px solid #5865F2;
+            outline-offset: 2px;
+        }
+        .auth-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 6px;
+            margin-top: 4px;
+            z-index: 10;
+        }
+        .auth-banner:hover .auth-menu {
+            display: block;
+        }
+        .auth-name {
+            max-width: none;
+        }
     </style>
 </head>
 <body>
@@ -252,17 +287,17 @@
 
         // Check if backend is available
         async function checkBackendAvailability() {
-            try {
-                const response = await fetch('/health', {
-                    method: 'GET',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                backendAvailable = response.ok;
-                console.log('Backend available:', backendAvailable);
-            } catch (error) {
-                backendAvailable = false;
-                console.log('Backend not available, using local storage');
-            }
+            const tryEndpoint = async (path) => {
+                try {
+                    const response = await fetch(path, { method: 'GET', headers: { 'Content-Type': 'application/json' } });
+                    return response.ok;
+                } catch (_) {
+                    return false;
+                }
+            };
+            // Prefer /api/health (works with Vite proxy in dev), fallback to /health (works in prod)
+            backendAvailable = await tryEndpoint('/api/health') || await tryEndpoint('/health');
+            console.log('Backend available:', backendAvailable);
         }
 
         // Initialize session when game starts
@@ -603,7 +638,7 @@
             if (!el) return;
             if (isAuthenticated && currentUser) {
                 const name = escapeHtml(currentUser.username || 'Player');
-                el.innerHTML = `<div class="auth-banner"><div class="auth-text">Signed in as <strong class="auth-name">${name}</strong></div><button id="logoutBtn" class="auth-logout">Logout</button></div>`;
+                el.innerHTML = `<div class="auth-banner"><button id="authUserBtn" class="auth-user" aria-haspopup="true" aria-expanded="false" title="Account"><strong class="auth-name">${name}</strong></button><div class="auth-menu"><button id="logoutBtn" class="auth-logout" type="button">Logout</button></div></div>`;
                 const btn = document.getElementById('logoutBtn');
                 if (btn) btn.onclick = () => { logout(); updateAuthStatusUI(); };
             } else {
