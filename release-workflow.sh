@@ -124,16 +124,22 @@ execute_git_command() {
 main() {
   parse_args "$@"
 
-  # Ensure we're in the repository root (relative to script), but verify with git
-  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  cd "$SCRIPT_DIR/.." || die "Could not change to project root directory"
-  # Resolve actual git root to avoid accidental /srv due to wrong cwd
+  # Ensure we're in the repository root - resolve actual git root
   if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     GIT_ROOT="$(git rev-parse --show-toplevel)"
     info "Changing to Git repo root: $GIT_ROOT"
     cd "$GIT_ROOT" || die "Could not change to git root directory"
   else
-    die "Not inside a Git repository."
+    # Try to find git root from script location
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    cd "$SCRIPT_DIR" || die "Could not change to script directory"
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      GIT_ROOT="$(git rev-parse --show-toplevel)"
+      info "Changing to Git repo root: $GIT_ROOT"
+      cd "$GIT_ROOT" || die "Could not change to git root directory"
+    else
+      die "Not inside a Git repository."
+    fi
   fi
 
   # Initial checks

@@ -1,5 +1,5 @@
 import { actions, dashboardState, subscribe } from '../state';
-import { verifyAuthentication } from '../api';
+import { checkHealth } from '../api';
 import type { DashboardSubscriber } from '../types';
 
 const bannerId = 'gf-connection-banner';
@@ -42,7 +42,7 @@ const updateBanner: DashboardSubscriber['notify'] = (snapshot) => {
 };
 
 const checkBackend = async (): Promise<void> => {
-  const available = await verifyAuthentication().catch(() => false);
+  const available = await checkHealth().catch(() => false);
   actions.setConnectivity({ backendAvailable: available, lastChecked: new Date().toISOString() });
 };
 
