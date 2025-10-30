@@ -518,6 +518,10 @@
         window.GF_DIAG = { config: { source: 'unknown', t: 0, error: null } };
 
         window.GF_PREVIEW = window.self !== window.top;
+        // Initialize pause flag for preview mode
+        if (window.GF_PREVIEW) {
+            window.GF_PREVIEW_PAUSED = false;
+        }
         if (window.GF_PREVIEW) {
             document.body.classList.add('preview-mode');
             // Initialize debug overlays object
