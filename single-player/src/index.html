@@ -550,9 +550,9 @@
                         }
                         // Store pause flag to prevent drawing even in START state
                         window.GF_PREVIEW_PAUSED = true;
-                        // Force stop any current drawing operations
-                        if (typeof stopDrawing === 'function') {
-                            stopDrawing();
+                        // Stop the game loop entirely
+                        if (typeof gameLoopActive !== 'undefined') {
+                            gameLoopActive = false;
                         }
                     } else if (payload === false || payload === 'false' || payload === 0) {
                         // Resume
@@ -560,10 +560,23 @@
                             gameState = GAME_STATES.PLAYING;
                         }
                         window.GF_PREVIEW_PAUSED = false;
+                        // Restart the game loop
+                        if (typeof gameLoopActive !== 'undefined') {
+                            gameLoopActive = true;
+                            // Restart the loop by scheduling next frame
+                            requestAnimationFrame(gameLoop);
+                        }
                     }
                 } else if (type === 'init-pause-state') {
                     // Initialize pause state from dashboard
                     window.GF_PREVIEW_PAUSED = Boolean(payload);
+                    // Set loop active state accordingly
+                    if (typeof gameLoopActive !== 'undefined') {
+                        gameLoopActive = !Boolean(payload);
+                        if (gameLoopActive) {
+                            requestAnimationFrame(gameLoop);
+                        }
+                    }
                 } else if (type === 'toggle-overlay') {
                     // Handle debug overlay toggles
                     const { overlay, enabled } = payload;
@@ -2775,14 +2788,23 @@
             }
         }
 
+        let gameLoopActive = true;
+        
         function gameLoop() {
-            // Skip drawing if preview is paused by dashboard (check FIRST, before ANYTHING)
-            // Check multiple times to be absolutely sure
-            if (window.GF_PREVIEW) {
-                if (window.GF_PREVIEW_PAUSED === true) {
-                    requestAnimationFrame(gameLoop);
-                    return;
-                }
+            // Stop loop entirely if preview is paused - don't schedule next frame
+            if (window.GF_PREVIEW && window.GF_PREVIEW_PAUSED === true) {
+                gameLoopActive = false;
+                return; // Don't call requestAnimationFrame - stop the loop
+            }
+            
+            // Restart loop if it was stopped and we're now unpaused
+            if (!gameLoopActive && window.GF_PREVIEW && window.GF_PREVIEW_PAUSED !== true) {
+                gameLoopActive = true;
+            }
+            
+            // If loop is marked inactive, don't continue
+            if (!gameLoopActive) {
+                return;
             }
             
             // Skip drawing if canvas context is invalid (iframe might be hidden)
@@ -2831,7 +2853,11 @@
             
             draw();
             publishTelemetry();
-            requestAnimationFrame(gameLoop);
+            
+            // Only schedule next frame if loop is still active
+            if (gameLoopActive) {
+                requestAnimationFrame(gameLoop);
+            }
         }
 
         function publishTelemetry() {
