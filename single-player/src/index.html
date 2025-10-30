@@ -2149,6 +2149,28 @@
         }
 
         function draw() {
+            // Skip drawing if canvas context is invalid
+            if (!ctx || !canvas) {
+                return;
+            }
+            
+            // Skip drawing if preview is paused by dashboard
+            if (window.GF_PREVIEW && window.GF_PREVIEW_PAUSED) {
+                return;
+            }
+            
+            // Additional safety check for canvas validity
+            try {
+                // Test if we can access canvas properties
+                const test = canvas.width;
+                if (test === undefined || test === null) {
+                    return;
+                }
+            } catch (e) {
+                // Canvas context is invalid - stop drawing
+                return;
+            }
+            
             if (gameState === GAME_STATES.START) {
                 drawStartScreen();
                 return;
@@ -2670,6 +2692,25 @@
         }
 
         function gameLoop() {
+            // Skip drawing if canvas context is invalid (iframe might be hidden)
+            if (!ctx || !canvas) {
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+            
+            // Check if canvas is actually attached to DOM (iframe might be hidden)
+            try {
+                if (!canvas.parentElement || canvas.offsetParent === null) {
+                    // Canvas is detached or hidden - skip drawing but keep loop running
+                    requestAnimationFrame(gameLoop);
+                    return;
+                }
+            } catch (e) {
+                // Error checking canvas state - skip this frame
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+            
             if (gameState === GAME_STATES.PLAYING) {
                 updateShip();
                 updateProjectiles();
