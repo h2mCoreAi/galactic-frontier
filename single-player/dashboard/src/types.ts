@@ -105,6 +105,7 @@ export interface AutoRefreshController {
 export interface DashboardConnectivity {
   readonly backendAvailable: boolean;
   readonly lastChecked: string | null;
+  readonly lastSynced: string | null;
 }
 
 export interface DashboardStateSnapshot {

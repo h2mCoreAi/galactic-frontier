@@ -27,6 +27,7 @@ const createSnapshot = (): MutableSnapshot => {
     connectivity: {
       backendAvailable: true,
       lastChecked: null,
+      lastSynced: null,
     },
     config: null,
     originalConfig: null,

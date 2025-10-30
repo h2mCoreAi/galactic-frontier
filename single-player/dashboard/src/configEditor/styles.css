@@ -1,3 +1,88 @@
+.gf-enemy-preview-container {
+  margin-top: 24px;
+  padding: 20px;
+  border-radius: 12px;
+  background: rgba(12, 16, 24, 0.48);
+  border: 1px solid var(--gf-border);
+}
+
+.gf-enemy-preview h4 {
+  margin: 0 0 16px 0;
+  font-size: 1rem;
+  color: rgba(230, 241, 255, 0.9);
+}
+
+.gf-enemy-preview__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.gf-enemy-preview__item {
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--gf-border);
+}
+
+.gf-enemy-preview__canvas {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.gf-enemy-preview__info {
+  text-align: center;
+}
+
+.gf-enemy-preview__info strong {
+  display: block;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  font-size: 0.875rem;
+  color: var(--gf-accent);
+}
+
+.gf-enemy-preview__stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: rgba(230, 241, 255, 0.7);
+}
+
+.gf-enemy-preview__comparison {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--gf-border);
+}
+
+.gf-enemy-preview__comparison h4 {
+  margin-bottom: 12px;
+}
+
+.gf-enemy-preview__comparison > div {
+  display: flex;
+  justify-content: center;
+}
+
+:root[data-theme='light'] .gf-enemy-preview-container {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+:root[data-theme='light'] .gf-enemy-preview h4 {
+  color: rgba(17, 24, 39, 0.9);
+}
+
+:root[data-theme='light'] .gf-enemy-preview__item {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+:root[data-theme='light'] .gf-enemy-preview__stats {
+  color: rgba(17, 24, 39, 0.7);
+}
+
 .gf-config-editor__textarea {
   width: 100%;
   min-height: 480px;

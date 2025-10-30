@@ -9,6 +9,7 @@ import { initializeSettings } from './components/settings';
 import { initializeAutoRefresh } from './components/autoRefresh';
 import { initializeConnectionBanner } from './components/connectionBanner';
 import { initializeProgressIndicator } from './components/progressIndicator';
+import { initializeRealtimeSync } from './components/realtimeSync';
 import { initializeLivePreview } from './testing/livePreview';
 import { initializeTelemetryPanel } from './testing/telemetryPanel';
 import { initializeSpawnControls } from './testing/spawnControls';
@@ -195,6 +196,7 @@ const initialize = (): void => {
   initializeAutoRefresh();
   initializeConnectionBanner();
   initializeProgressIndicator();
+  initializeRealtimeSync();
   initializeLivePreview();
   initializeTelemetryPanel();
   initializeSpawnControls();

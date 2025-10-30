@@ -261,4 +261,11 @@ export const initializeEnemyEditor = (): void => {
     renderEnemyCards(config.enemies);
     populateForm(config.enemies[0]);
   }
+  
+  // Initialize preview after a short delay to ensure DOM is ready
+  setTimeout(() => {
+    import('./enemyPreview').then((module) => {
+      module.initializeEnemyPreview();
+    });
+  }, 100);
 };

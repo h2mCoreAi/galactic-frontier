@@ -22,23 +22,35 @@ const ensureBanner = (): HTMLElement | null => {
   return banner;
 };
 
-const renderBanner = (backendAvailable: boolean): void => {
+const renderBanner = (backendAvailable: boolean, lastSynced: string | null): void => {
   const banner = ensureBanner();
   if (!banner) {
     return;
   }
 
   if (backendAvailable) {
-    banner.hidden = true;
-    banner.textContent = '';
+    banner.hidden = false;
+    if (lastSynced) {
+      const syncDate = new Date(lastSynced);
+      const secondsAgo = Math.floor((Date.now() - syncDate.getTime()) / 1000);
+      const syncText = secondsAgo < 60 
+        ? `Synced ${secondsAgo}s ago` 
+        : `Synced ${Math.floor(secondsAgo / 60)}m ago`;
+      banner.className = 'gf-connection-banner gf-connection-banner--success';
+      banner.textContent = `✓ Backend connected. ${syncText}`;
+    } else {
+      banner.className = 'gf-connection-banner gf-connection-banner--info';
+      banner.textContent = 'Backend connected. Waiting for sync...';
+    }
   } else {
     banner.hidden = false;
+    banner.className = 'gf-connection-banner';
     banner.textContent = 'Backend unavailable. Operating in offline mode with local data only.';
   }
 };
 
 const updateBanner: DashboardSubscriber['notify'] = (snapshot) => {
-  renderBanner(snapshot.connectivity.backendAvailable);
+  renderBanner(snapshot.connectivity.backendAvailable, snapshot.connectivity.lastSynced);
 };
 
 const checkBackend = async (): Promise<void> => {

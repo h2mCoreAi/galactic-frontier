@@ -106,6 +106,39 @@ button, input, select, textarea {
 }
 
 .gf-connection-banner {
+  padding: 12px 20px;
+  background: rgba(255, 71, 87, 0.15);
+  border-left: 4px solid var(--gf-danger);
+  color: var(--gf-danger);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.gf-connection-banner--success {
+  background: rgba(46, 204, 113, 0.15);
+  border-left-color: var(--gf-success);
+  color: var(--gf-success);
+}
+
+.gf-connection-banner--info {
+  background: rgba(63, 140, 255, 0.15);
+  border-left-color: var(--gf-accent);
+  color: var(--gf-accent);
+}
+
+:root[data-theme='light'] .gf-connection-banner {
+  background: rgba(220, 38, 38, 0.1);
+}
+
+:root[data-theme='light'] .gf-connection-banner--success {
+  background: rgba(21, 128, 61, 0.1);
+}
+
+:root[data-theme='light'] .gf-connection-banner--info {
+  background: rgba(29, 78, 216, 0.1);
+}
+
+.gf-connection-banner-old {
   padding: 10px 32px;
   background: rgba(255, 196, 33, 0.15);
   border-bottom: 1px solid rgba(255, 196, 33, 0.25);
