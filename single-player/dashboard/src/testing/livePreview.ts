@@ -61,23 +61,32 @@ const ensureIFrame = (): HTMLIFrameElement | null => {
     lastConfigHash = null;
     lastPreviewConfigHash = null;
     
-    // Immediately set pause state if tab is hidden, before game starts drawing
-    if (shouldStartPaused && iframe.contentWindow) {
-      // Send pause message multiple times to ensure it's received
-      iframe.contentWindow.postMessage({ type: 'init-pause-state', payload: true }, '*');
-      iframe.contentWindow.postMessage({ type: 'toggle-pause', payload: true }, '*');
+    // Set pause state based on tab visibility - game starts paused by default
+    if (iframe.contentWindow) {
+      // Always send initial pause state immediately
+      iframe.contentWindow.postMessage({ type: 'init-pause-state', payload: shouldStartPaused }, '*');
       
-      // Send again after short delays to catch early game loop cycles
-      window.setTimeout(() => {
-        if (iframe.contentWindow) {
-          iframe.contentWindow.postMessage({ type: 'toggle-pause', payload: true }, '*');
-        }
-      }, 5);
-      window.setTimeout(() => {
-        if (iframe.contentWindow) {
-          iframe.contentWindow.postMessage({ type: 'toggle-pause', payload: true }, '*');
-        }
-      }, 50);
+      if (shouldStartPaused) {
+        // Tab is hidden, ensure paused - send multiple times to catch early loops
+        iframe.contentWindow.postMessage({ type: 'toggle-pause', payload: true }, '*');
+        window.setTimeout(() => {
+          if (iframe.contentWindow) {
+            iframe.contentWindow.postMessage({ type: 'toggle-pause', payload: true }, '*');
+          }
+        }, 5);
+        window.setTimeout(() => {
+          if (iframe.contentWindow) {
+            iframe.contentWindow.postMessage({ type: 'toggle-pause', payload: true }, '*');
+          }
+        }, 50);
+      } else {
+        // Tab is visible, resume the game
+        window.setTimeout(() => {
+          if (iframe.contentWindow) {
+            iframe.contentWindow.postMessage({ type: 'toggle-pause', payload: false }, '*');
+          }
+        }, 100);
+      }
     }
   });
   container.appendChild(iframe);
