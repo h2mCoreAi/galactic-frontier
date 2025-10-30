@@ -2809,20 +2809,34 @@
             
             // Skip drawing if canvas context is invalid (iframe might be hidden)
             if (!ctx || !canvas) {
-                requestAnimationFrame(gameLoop);
+                if (gameLoopActive) {
+                    requestAnimationFrame(gameLoop);
+                }
                 return;
             }
             
             // Check if canvas is actually attached to DOM (iframe might be hidden)
             try {
                 if (!canvas.parentElement || canvas.offsetParent === null) {
-                    // Canvas is detached or hidden - skip drawing but keep loop running
-                    requestAnimationFrame(gameLoop);
+                    // Canvas is detached or hidden - stop loop if preview mode
+                    if (window.GF_PREVIEW) {
+                        gameLoopActive = false;
+                        return;
+                    }
+                    if (gameLoopActive) {
+                        requestAnimationFrame(gameLoop);
+                    }
                     return;
                 }
             } catch (e) {
-                // Error checking canvas state - skip this frame
-                requestAnimationFrame(gameLoop);
+                // Error checking canvas state - stop loop if preview mode
+                if (window.GF_PREVIEW) {
+                    gameLoopActive = false;
+                    return;
+                }
+                if (gameLoopActive) {
+                    requestAnimationFrame(gameLoop);
+                }
                 return;
             }
             
@@ -3117,7 +3131,12 @@
             setupAudioControls();
             initAuth();
             handleAuthCallback();
-            gameLoop(); // Start the render loop, but game stays in START state
+            
+            // Start game loop only if not paused (preview mode starts paused)
+            if (!window.GF_PREVIEW || window.GF_PREVIEW_PAUSED !== true) {
+                gameLoopActive = true;
+                gameLoop(); // Start the render loop, but game stays in START state
+            }
         }
 
         initGame();
