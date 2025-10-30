@@ -538,10 +538,20 @@
                     spawnEnemy();
                 } else if (type === 'toggle-pause') {
                     // Handle pause/unpause from dashboard
-                    if (payload === true && gameState === GAME_STATES.PLAYING) {
-                        gameState = GAME_STATES.PAUSED;
-                    } else if (payload === false && gameState === GAME_STATES.PAUSED) {
-                        gameState = GAME_STATES.PLAYING;
+                    // Payload true = pause, false = resume
+                    if (payload === true) {
+                        // Pause regardless of current state (including START state)
+                        if (gameState === GAME_STATES.PLAYING) {
+                            gameState = GAME_STATES.PAUSED;
+                        }
+                        // Store pause flag to prevent drawing even in START state
+                        window.GF_PREVIEW_PAUSED = true;
+                    } else if (payload === false) {
+                        // Resume
+                        if (gameState === GAME_STATES.PAUSED) {
+                            gameState = GAME_STATES.PLAYING;
+                        }
+                        window.GF_PREVIEW_PAUSED = false;
                     }
                 } else if (type === 'toggle-overlay') {
                     // Handle debug overlay toggles
