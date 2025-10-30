@@ -33,8 +33,9 @@ const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || (IS_DEV ? 'pl
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5174';
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5174';
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS) || 12;
-const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000;
-const RATE_LIMIT_MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100;
+// More lenient rate limiting in development
+const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS) || (IS_DEV ? 60000 : 900000); // 1 minute in dev, 15 min in prod
+const RATE_LIMIT_MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || (IS_DEV ? 1000 : 100); // 1000/min in dev, 100/15min in prod
 const CONFIG_PATH = path.join(__dirname, 'config', 'config.json');
 const GAME_CONFIG_PATH = path.join(__dirname, 'single-player', 'src', 'public', 'config', 'config.json');
 const RAW_CORS = process.env.CORS_ORIGINS || process.env.CORS_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:5174';
