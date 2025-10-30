@@ -69,6 +69,19 @@ const setActiveTab = (tab: TabKey): void => {
 
   const primary = TAB_LABELS[tab];
   actions.setBreadcrumbs({ primary, secondary: undefined });
+  
+  // Trigger tab visibility check for game preview pause/resume
+  // Use setTimeout to ensure DOM has updated
+  window.setTimeout(() => {
+    const testingTab = document.getElementById('testingTab');
+    const iframe = document.getElementById('gamePreviewFrame') as HTMLIFrameElement | null;
+    if (iframe && testingTab) {
+      const isVisible = !testingTab.hidden;
+      if (iframe.contentWindow) {
+        iframe.contentWindow.postMessage({ type: 'toggle-pause', payload: !isVisible }, '*');
+      }
+    }
+  }, 50);
 };
 
 const handleNavClick = (event: Event): void => {

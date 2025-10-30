@@ -1159,10 +1159,25 @@
         }
 
         function drawStartScreen() {
+            // Skip drawing if preview is paused by dashboard
+            if (window.GF_PREVIEW && window.GF_PREVIEW_PAUSED) {
+                return;
+            }
+            
             // Check if canvas context is still valid (iframe might be hidden)
             if (!ctx || !canvas) {
                 return;
             }
+            
+            // Check if canvas is actually attached and visible
+            try {
+                if (!canvas.parentElement || !canvas.offsetParent) {
+                    return;
+                }
+            } catch (e) {
+                return;
+            }
+            
             try {
                 ctx.fillStyle = 'black';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);

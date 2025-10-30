@@ -131,6 +131,12 @@ const handleTabVisibility = (): void => {
   // Pause game when testing tab is hidden, resume when visible
   const isVisible = !testingTab.hidden;
   pauseGame(iframe, !isVisible);
+  
+  // Also check immediately after a short delay to catch DOM updates
+  window.setTimeout(() => {
+    const stillVisible = !testingTab.hidden;
+    pauseGame(iframe, !stillVisible);
+  }, 100);
 };
 
 export const initializeLivePreview = (): void => {
