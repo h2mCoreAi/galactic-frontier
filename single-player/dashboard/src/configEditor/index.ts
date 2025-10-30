@@ -1,5 +1,6 @@
 import { actions, dashboardState, subscribe } from '../state';
 import { persistConfig, deployConfig } from '../api';
+import { setCachedConfig, invalidateConfigCache } from '../cache';
 import { showToast } from '../toast';
 import type { DashboardSubscriber, GalacticFrontierConfig } from '../types';
 import { initializeEnemyEditor } from './enemyEditor';
@@ -113,6 +114,7 @@ const handleSaveClick = async (): Promise<void> => {
     await persistConfig(parsed);
     actions.setConfig(parsed, false);
     actions.markSaved();
+    setCachedConfig(parsed);
     showToast({ title: 'Configuration saved', variant: 'success' });
   } catch (error) {
     console.error('[GF Dashboard] Save failed', error);

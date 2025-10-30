@@ -1,5 +1,6 @@
 import { actions } from './state';
 import { fetchConfig, fetchBackups } from './api';
+import { getCachedConfig, setCachedConfig, invalidateConfigCache } from './cache';
 import type { GalacticFrontierConfig } from './types';
 
 const isValidNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
@@ -83,16 +84,32 @@ export const validateConfig = (config: GalacticFrontierConfig): void => {
 export const loadDashboardConfig = async (): Promise<void> => {
   actions.setLoading(true);
   try {
+    // Try cache first
+    const cached = getCachedConfig();
+    if (cached) {
+      try {
+        validateConfig(cached);
+        actions.setConfig(cached, false);
+        actions.setError(null);
+      } catch (validationError) {
+        console.warn('[GF Dashboard] Cached config validation failed, fetching fresh', validationError);
+        invalidateConfigCache();
+      }
+    }
+
+    // Always fetch fresh config to ensure sync, but use cache for instant display
     const config = await fetchConfig();
     try {
       validateConfig(config);
       actions.setConfig(config, false);
       actions.setError(null);
+      setCachedConfig(config);
     } catch (validationError) {
       console.warn('[GF Dashboard] Validation failed, opening raw editor anyway', validationError);
       // Allow editing even if invalid; user can fix and save
       actions.setConfig(config, true);
       actions.setError(validationError instanceof Error ? validationError.message : 'Configuration validation failed.');
+      setCachedConfig(config);
     }
     // Load backups in the background, don't block editor render
     fetchBackups()

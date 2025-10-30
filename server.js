@@ -153,11 +153,20 @@ const listConfigBackupFiles = async () => {
   const backups = await Promise.all(files.map(async (file) => {
     const filePath = path.join(CONFIG_BACKUP_DIR, file.name);
     const stats = await fsPromises.stat(filePath);
+    let version;
+    try {
+      const data = await fsPromises.readFile(filePath, 'utf8');
+      const config = JSON.parse(data);
+      version = config.version || 'unknown';
+    } catch (err) {
+      version = 'unknown';
+    }
     return {
       id: path.basename(file.name, '.json'),
       createdAt: stats.mtime.toISOString(),
       size: stats.size,
       path: filePath,
+      version,
     };
   }));
 

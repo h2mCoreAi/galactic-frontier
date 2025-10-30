@@ -1,5 +1,6 @@
 import { actions, dashboardState, subscribe } from '../state';
 import { fetchBackups, restoreBackup } from '../api';
+import { setCachedConfig, invalidateConfigCache } from '../cache';
 import { showToast } from '../toast';
 import type { DashboardBackup, DashboardSubscriber } from '../types';
 
@@ -30,11 +31,15 @@ const renderBackups = (backups: DashboardBackup[]): void => {
     const item = document.createElement('li');
     item.className = 'gf-backup-item';
     const date = new Date(backup.createdAt);
+    const currentVersion = dashboardState.config?.version || 'unknown';
+    const isOlderVersion = backup.version && currentVersion !== 'unknown' && backup.version !== currentVersion;
     item.innerHTML = `
       <div class="gf-backup-item__meta">
         <span class="gf-backup-item__time">${date.toLocaleString()}</span>
         <span class="gf-backup-item__size">${formatBytes(backup.size)}</span>
+        ${backup.version ? `<span class="gf-backup-item__version ${isOlderVersion ? 'gf-backup-item__version--warning' : ''}">v${backup.version}</span>` : ''}
       </div>
+      ${isOlderVersion ? '<div class="gf-backup-item__warning">Older schema version</div>' : ''}
       <div class="gf-backup-item__actions">
         <button type="button" class="gf-button gf-button--secondary" data-backup="${backup.id}" data-action="restore">Restore</button>
         <button type="button" class="gf-button" data-backup="${backup.id}" data-action="download">Download</button>
@@ -55,12 +60,32 @@ const handleListClick = async (event: Event): Promise<void> => {
   }
 
   if (action === 'restore') {
+    const backupData = dashboardState.backups.find((b) => b.id === backup);
+    const currentVersion = dashboardState.config?.version || 'unknown';
+    const isDowngrade = backupData?.version && currentVersion !== 'unknown' && backupData.version !== currentVersion;
+
+    if (isDowngrade) {
+      const confirmed = window.confirm(
+        `Warning: This backup uses schema version ${backupData.version}, but current config uses ${currentVersion}. ` +
+        `Restoring may cause data loss or require migration. Continue?`
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+
     try {
       actions.setLoading(true);
       const restoredConfig = await restoreBackup(backup);
       actions.setConfig(restoredConfig, false);
       actions.markSaved();
-      showToast({ title: 'Backup restored', message: `Backup ${backup} applied.`, variant: 'info' });
+      invalidateConfigCache();
+      setCachedConfig(restoredConfig);
+      showToast({ 
+        title: 'Backup restored', 
+        message: `Backup ${backup} applied${isDowngrade ? ' (schema migrated if needed)' : ''}.`, 
+        variant: 'info' 
+      });
     } catch (error) {
       console.error('[GF Dashboard] Restore failed', error);
       showToast({ title: 'Restore failed', message: error instanceof Error ? error.message : 'Unknown error', variant: 'error' });

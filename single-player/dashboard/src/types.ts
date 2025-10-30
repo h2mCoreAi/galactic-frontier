@@ -73,6 +73,7 @@ export interface DashboardBackup {
   readonly createdAt: string;
   readonly size: number;
   readonly path?: string;
+  readonly version?: string;
 }
 
 export interface DashboardMetrics {
