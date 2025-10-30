@@ -518,9 +518,9 @@
         window.GF_DIAG = { config: { source: 'unknown', t: 0, error: null } };
 
         window.GF_PREVIEW = window.self !== window.top;
-        // Initialize pause flag for preview mode
+        // Initialize pause flag for preview mode - start paused to prevent immediate drawing
         if (window.GF_PREVIEW) {
-            window.GF_PREVIEW_PAUSED = false;
+            window.GF_PREVIEW_PAUSED = true; // Start paused, dashboard will resume when ready
         }
         if (window.GF_PREVIEW) {
             document.body.classList.add('preview-mode');
