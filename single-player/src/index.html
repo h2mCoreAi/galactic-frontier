@@ -2214,13 +2214,13 @@
         }
 
         function draw() {
-            // Skip drawing if canvas context is invalid
-            if (!ctx || !canvas) {
+            // Skip drawing if preview is paused by dashboard (check FIRST before anything else)
+            if (window.GF_PREVIEW && window.GF_PREVIEW_PAUSED) {
                 return;
             }
             
-            // Skip drawing if preview is paused by dashboard
-            if (window.GF_PREVIEW && window.GF_PREVIEW_PAUSED) {
+            // Skip drawing if canvas context is invalid
+            if (!ctx || !canvas) {
                 return;
             }
             

@@ -51,10 +51,24 @@ const ensureIFrame = (): HTMLIFrameElement | null => {
   // The warnings are harmless - browser still applies the policy
   iframe.setAttribute('allow', 'autoplay fullscreen');
   iframe.sandbox.add('allow-scripts', 'allow-same-origin', 'allow-pointer-lock');
+  
+  // Check if testing tab is visible before creating iframe
+  const testingTab = document.getElementById('testingTab');
+  const shouldStartPaused = !testingTab || testingTab.hidden;
+  
   // Reset config hash when iframe loads to allow initial config
   iframe.addEventListener('load', () => {
     lastConfigHash = null;
     lastPreviewConfigHash = null;
+    
+    // Immediately pause if tab is hidden, before game starts drawing
+    if (shouldStartPaused && iframe.contentWindow) {
+      window.setTimeout(() => {
+        if (iframe.contentWindow) {
+          iframe.contentWindow.postMessage({ type: 'toggle-pause', payload: true }, '*');
+        }
+      }, 10);
+    }
   });
   container.appendChild(iframe);
 
