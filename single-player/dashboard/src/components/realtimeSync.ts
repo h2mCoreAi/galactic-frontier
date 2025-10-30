@@ -3,7 +3,7 @@ import { fetchConfig } from '../api';
 import { setCachedConfig } from '../cache';
 import type { DashboardSubscriber } from '../types';
 
-const SYNC_INTERVAL_MS = 30000; // 30 seconds
+const SYNC_INTERVAL_MS = 60000; // 60 seconds - increased to reduce rate limiting
 let syncTimer: number | null = null;
 let lastSyncTime: number | null = null;
 

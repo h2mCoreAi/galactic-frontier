@@ -35,7 +35,8 @@ const ensureIFrame = (): HTMLIFrameElement | null => {
   iframe.className = 'gf-preview__iframe';
   iframe.src = GAME_URL;
   iframe.title = 'Galactic Frontier Live Preview';
-  iframe.allow = 'autoplay; clipboard-read; clipboard-write;';
+  // Use allow attribute instead of deprecated Feature Policy
+  iframe.setAttribute('allow', 'autoplay; fullscreen');
   iframe.sandbox.add('allow-scripts', 'allow-same-origin', 'allow-pointer-lock');
   container.appendChild(iframe);
 

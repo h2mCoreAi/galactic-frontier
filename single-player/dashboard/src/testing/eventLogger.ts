@@ -14,11 +14,21 @@ interface LogEntry {
 const logs: LogEntry[] = [];
 
 const addLog = (entry: LogEntry): void => {
-  logs.push(entry);
-  if (logs.length > MAX_LOG_ENTRIES) {
-    logs.shift();
+  // Prevent recursive calls
+  if (isLogging) {
+    return;
   }
-  renderLogs();
+  
+  try {
+    isLogging = true;
+    logs.push(entry);
+    if (logs.length > MAX_LOG_ENTRIES) {
+      logs.shift();
+    }
+    renderLogs();
+  } finally {
+    isLogging = false;
+  }
 };
 
 const formatTimestamp = (timestamp: number): string => {
@@ -169,49 +179,12 @@ const handleGameMessage = (event: MessageEvent): void => {
 // Listen for game events
 window.addEventListener('message', handleGameMessage);
 
-// Also listen for dashboard events
-const originalConsoleLog = console.log;
-const originalConsoleWarn = console.warn;
-const originalConsoleError = console.error;
+// Track if we're inside our own logging to prevent recursion
+let isLogging = false;
 
-console.log = (...args: unknown[]): void => {
-  originalConsoleLog.apply(console, args);
-  const message = args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
-  if (message.includes('[GF Game]') || message.includes('[GF Dashboard]')) {
-    addLog({
-      timestamp: Date.now(),
-      level: 'info',
-      message: message.replace(/\[GF (Game|Dashboard)\] /g, ''),
-      source: 'dashboard',
-    });
-  }
-};
-
-console.warn = (...args: unknown[]): void => {
-  originalConsoleWarn.apply(console, args);
-  const message = args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
-  if (message.includes('[GF Game]') || message.includes('[GF Dashboard]')) {
-    addLog({
-      timestamp: Date.now(),
-      level: 'warn',
-      message: message.replace(/\[GF (Game|Dashboard)\] /g, ''),
-      source: 'dashboard',
-    });
-  }
-};
-
-console.error = (...args: unknown[]): void => {
-  originalConsoleError.apply(console, args);
-  const message = args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
-  if (message.includes('[GF Game]') || message.includes('[GF Dashboard]')) {
-    addLog({
-      timestamp: Date.now(),
-      level: 'error',
-      message: message.replace(/\[GF (Game|Dashboard)\] /g, ''),
-      source: 'dashboard',
-    });
-  }
-};
+// Also listen for dashboard events via message events only
+// Don't override console methods to avoid recursion issues
+// Game messages are already handled via handleGameMessage
 
 const updateEventLogger: DashboardSubscriber['notify'] = (snapshot) => {
   // Event logger doesn't need to react to state changes, but we keep the subscriber for consistency
