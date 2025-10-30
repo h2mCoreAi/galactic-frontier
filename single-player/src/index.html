@@ -1191,15 +1191,25 @@
             
             // Validate canvas context before any operations
             try {
-                // Test context validity before drawing
-                if (!ctx || typeof ctx.fillStyle !== 'string') {
+                // Test context validity before drawing - check multiple times
+                if (!ctx || !canvas || typeof ctx.fillStyle !== 'string') {
+                    return;
+                }
+                // Double-check pause state right before drawing
+                if (window.GF_PREVIEW && window.GF_PREVIEW_PAUSED) {
+                    return;
+                }
+                // Try to access canvas dimensions - if this fails, context is invalid
+                const testWidth = canvas.width;
+                const testHeight = canvas.height;
+                if (testWidth === 0 || testHeight === 0 || !isFinite(testWidth) || !isFinite(testHeight)) {
                     return;
                 }
                 ctx.fillStyle = 'black';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillRect(0, 0, testWidth, testHeight);
             } catch (e) {
                 // Canvas context is invalid or detached - stop drawing silently
-                // Don't log to avoid console spam
+                // This prevents NS_ERROR_FAILURE spam
                 return;
             }
 
@@ -2764,10 +2774,13 @@
         }
 
         function gameLoop() {
-            // Skip drawing if preview is paused by dashboard (check FIRST)
-            if (window.GF_PREVIEW && window.GF_PREVIEW_PAUSED) {
-                requestAnimationFrame(gameLoop);
-                return;
+            // Skip drawing if preview is paused by dashboard (check FIRST, before ANYTHING)
+            // Check multiple times to be absolutely sure
+            if (window.GF_PREVIEW) {
+                if (window.GF_PREVIEW_PAUSED === true) {
+                    requestAnimationFrame(gameLoop);
+                    return;
+                }
             }
             
             // Skip drawing if canvas context is invalid (iframe might be hidden)
