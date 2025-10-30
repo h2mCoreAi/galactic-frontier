@@ -161,6 +161,10 @@ export const initializeLivePreview = (): void => {
     if (dashboardState.config && iframe) {
       postConfig(iframe, dashboardState.config);
     }
+    // Send initial pause state when iframe loads
+    window.setTimeout(() => {
+      handleTabVisibility();
+    }, 100);
   });
   
   // Watch for tab visibility changes
@@ -171,8 +175,10 @@ export const initializeLivePreview = (): void => {
   const testingTab = document.getElementById('testingTab');
   if (testingTab) {
     observer.observe(testingTab, { attributes: true, attributeFilter: ['hidden'] });
-    // Initial check
-    handleTabVisibility();
+    // Initial check - delay to ensure iframe is ready
+    window.setTimeout(() => {
+      handleTabVisibility();
+    }, 200);
   }
 };
 

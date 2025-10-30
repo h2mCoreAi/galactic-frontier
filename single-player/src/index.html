@@ -1196,17 +1196,30 @@
                 return;
             }
 
-            // Draw stars
-            ctx.fillStyle = 'white';
-            stars.forEach(star => {
-                const screenX = star.universeX - universeX + canvas.width / 2;
-                const screenY = star.universeY - universeY + canvas.height / 2;
-                if (screenX >= 0 && screenX <= canvas.width && screenY >= 0 && screenY <= canvas.height) {
-                    ctx.beginPath();
-                    ctx.arc(screenX, screenY, star.size, 0, Math.PI * 2);
-                    ctx.fill();
+            // Draw stars - wrap in try-catch for safety
+            try {
+                // Double-check pause flag before drawing
+                if (window.GF_PREVIEW && window.GF_PREVIEW_PAUSED) {
+                    return;
                 }
-            });
+                ctx.fillStyle = 'white';
+                stars.forEach(star => {
+                    // Check pause again in loop
+                    if (window.GF_PREVIEW && window.GF_PREVIEW_PAUSED) {
+                        return;
+                    }
+                    const screenX = star.universeX - universeX + canvas.width / 2;
+                    const screenY = star.universeY - universeY + canvas.height / 2;
+                    if (screenX >= 0 && screenX <= canvas.width && screenY >= 0 && screenY <= canvas.height) {
+                        ctx.beginPath();
+                        ctx.arc(screenX, screenY, star.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                });
+            } catch (e) {
+                // Silent error - canvas might be invalid
+                return;
+            }
 
             // Title and instructions - wrap in try-catch
             try {
@@ -1243,16 +1256,20 @@
                 ctx.fillStyle = '#00ff00';
                 ctx.fillText('Press SPACEBAR or ENTER to Start', canvas.width / 2, canvas.height / 2 + 100);
 
-            // Analytics option
-            ctx.font = '16px Arial';
-            ctx.fillStyle = 'cyan';
-            ctx.fillText('Press A for Session Analytics', canvas.width / 2, canvas.height / 2 + 130);
+                // Analytics option
+                ctx.font = '16px Arial';
+                ctx.fillStyle = 'cyan';
+                ctx.fillText('Press A for Session Analytics', canvas.width / 2, canvas.height / 2 + 130);
 
-            // Version/Config info
-            ctx.font = '12px Arial';
-            ctx.fillStyle = 'gray';
-            ctx.textAlign = 'right';
-            ctx.fillText('Configuration Loaded', canvas.width - 10, canvas.height - 20);
+                // Version/Config info
+                ctx.font = '12px Arial';
+                ctx.fillStyle = 'gray';
+                ctx.textAlign = 'right';
+                ctx.fillText('Configuration Loaded', canvas.width - 10, canvas.height - 20);
+            } catch (e) {
+                // Silent error - canvas might be invalid
+                return;
+            }
         }
 
         function drawAuthScreen() {
