@@ -15,10 +15,17 @@ const clearTimer = (): void => {
 };
 
 let isSyncing = false; // Prevent concurrent syncs
+let lastSyncError: number | null = null;
+const SYNC_ERROR_BACKOFF_MS = 300000; // 5 minutes backoff after rate limit error
 
 const performSync = async (): Promise<void> => {
   // Prevent concurrent sync operations
   if (isSyncing) {
+    return;
+  }
+  
+  // If we hit a rate limit recently, wait longer before retrying
+  if (lastSyncError && Date.now() - lastSyncError < SYNC_ERROR_BACKOFF_MS) {
     return;
   }
   
@@ -36,6 +43,7 @@ const performSync = async (): Promise<void> => {
         actions.setConfig(config, false);
         setCachedConfig(config);
         lastSyncTime = Date.now();
+        lastSyncError = null; // Reset error on success
         // Only update connectivity if lastSynced actually changed to prevent loops
         const newLastSynced = new Date().toISOString();
         if (dashboardState.connectivity.lastSynced !== newLastSynced) {
@@ -50,6 +58,7 @@ const performSync = async (): Promise<void> => {
       actions.setConfig(config, false);
       setCachedConfig(config);
       lastSyncTime = Date.now();
+      lastSyncError = null; // Reset error on success
       const newLastSynced = new Date().toISOString();
       if (dashboardState.connectivity.lastSynced !== newLastSynced) {
         actions.setConnectivity({
@@ -59,7 +68,17 @@ const performSync = async (): Promise<void> => {
       }
     }
   } catch (error) {
-    console.warn('[GF Dashboard] Real-time sync failed', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    // Only log if it's not a rate limit error to avoid spam
+    if (!errorMessage.includes('429') && !errorMessage.includes('Too Many Requests')) {
+      console.warn('[GF Dashboard] Real-time sync failed', error);
+    }
+    
+    // Track rate limit errors for backoff
+    if (errorMessage.includes('429') || errorMessage.includes('Too Many Requests')) {
+      lastSyncError = Date.now();
+    }
+    // Don't update lastSyncTime on error to prevent false positives
   } finally {
     isSyncing = false;
   }
