@@ -1208,24 +1208,38 @@
                 }
             });
 
-            // Title
-            ctx.fillStyle = 'white';
-            ctx.font = '48px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('GALACTIC FRONTIER', canvas.width / 2, canvas.height / 2 - 100);
+            // Title and instructions - wrap in try-catch
+            try {
+                // Check pause again before text drawing
+                if (window.GF_PREVIEW && window.GF_PREVIEW_PAUSED) {
+                    return;
+                }
+                ctx.fillStyle = 'white';
+                ctx.font = '48px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('GALACTIC FRONTIER', canvas.width / 2, canvas.height / 2 - 100);
 
-            // Instructions
-            ctx.font = '20px Arial';
-            ctx.fillText('Controls:', canvas.width / 2, canvas.height / 2 - 40);
-            ctx.font = '16px Arial';
-            ctx.fillText('Mouse Movement - Rotate Ship', canvas.width / 2, canvas.height / 2 - 10);
-            ctx.fillText('W - Thrust Forward', canvas.width / 2, canvas.height / 2 + 10);
-            ctx.fillText('Spacebar - Afterburner (Limited Energy)', canvas.width / 2, canvas.height / 2 + 30);
-            ctx.fillText('Left Mouse Button - Shoot', canvas.width / 2, canvas.height / 2 + 50);
-            ctx.fillText('P - Pause/Resume', canvas.width / 2, canvas.height / 2 + 70);
+                // Instructions
+                ctx.font = '20px Arial';
+                ctx.fillText('Controls:', canvas.width / 2, canvas.height / 2 - 40);
+                ctx.font = '16px Arial';
+                ctx.fillText('Mouse Movement - Rotate Ship', canvas.width / 2, canvas.height / 2 - 10);
+                ctx.fillText('W - Thrust Forward', canvas.width / 2, canvas.height / 2 + 10);
+                ctx.fillText('Spacebar - Afterburner (Limited Energy)', canvas.width / 2, canvas.height / 2 + 30);
+                ctx.fillText('Left Mouse Button - Shoot', canvas.width / 2, canvas.height / 2 + 50);
+                ctx.fillText('P - Pause/Resume', canvas.width / 2, canvas.height / 2 + 70);
+            } catch (e) {
+                // Silent error - canvas might be invalid
+                return;
+            }
 
-            // Start prompt
-            ctx.font = '24px Arial';
+            // Start prompt - wrap in try-catch
+            try {
+                // Final pause check before drawing
+                if (window.GF_PREVIEW && window.GF_PREVIEW_PAUSED) {
+                    return;
+                }
+                ctx.font = '24px Arial';
             ctx.fillStyle = '#00ff00';
             ctx.fillText('Press SPACEBAR or ENTER to Start', canvas.width / 2, canvas.height / 2 + 100);
 
