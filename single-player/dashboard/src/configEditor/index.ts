@@ -2,6 +2,7 @@ import { actions, dashboardState, subscribe } from '../state';
 import { persistConfig, deployConfig } from '../api';
 import { setCachedConfig, invalidateConfigCache } from '../cache';
 import { showToast } from '../toast';
+import { confirmDialog } from '../confirmDialog';
 import type { DashboardSubscriber, GalacticFrontierConfig } from '../types';
 import { initializeEnemyEditor } from './enemyEditor';
 import { initializeProjectileEditor } from './projectileEditor';
@@ -143,12 +144,6 @@ const renderJsonEditor = (config: GalacticFrontierConfig): void => {
   textarea.value = `${JSON.stringify(config, null, 2)}\n`;
 };
 
-const confirmAction = (message: string): Promise<boolean> => {
-  return new Promise((resolve) => {
-    const confirmed = window.confirm(message);
-    resolve(confirmed);
-  });
-};
 
 const handleSaveClick = async (): Promise<void> => {
   const textarea = getTextarea();
@@ -158,7 +153,13 @@ const handleSaveClick = async (): Promise<void> => {
   }
 
   if (dashboardState.hasUnsavedChanges) {
-    const confirmed = await confirmAction('Save configuration changes? This will overwrite the current saved configuration.');
+    const confirmed = await confirmDialog({
+      title: 'Save Configuration',
+      message: 'Save configuration changes? This will overwrite the current saved configuration.',
+      confirmText: 'Save',
+      cancelText: 'Cancel',
+      variant: 'info',
+    });
     if (!confirmed) {
       return;
     }
@@ -184,13 +185,25 @@ const handleSaveClick = async (): Promise<void> => {
 
 const handleDeployClick = async (): Promise<void> => {
   if (dashboardState.hasUnsavedChanges) {
-    const confirmed = await confirmAction('You have unsaved changes. Deploy the current saved configuration, or cancel to save changes first.');
+    const confirmed = await confirmDialog({
+      title: 'Unsaved Changes',
+      message: 'You have unsaved changes. Deploy the current saved configuration, or cancel to save changes first.',
+      confirmText: 'Deploy Saved Config',
+      cancelText: 'Cancel',
+      variant: 'warning',
+    });
     if (!confirmed) {
       return;
     }
   }
 
-  const confirmed = await confirmAction('Deploy configuration to game directory? This will copy the saved configuration to the game\'s public config folder.');
+  const confirmed = await confirmDialog({
+    title: 'Deploy Configuration',
+    message: 'Deploy configuration to game directory? This will copy the saved configuration to the game\'s public config folder.',
+    confirmText: 'Deploy',
+    cancelText: 'Cancel',
+    variant: 'info',
+  });
   if (!confirmed) {
     return;
   }
@@ -200,7 +213,19 @@ const handleDeployClick = async (): Promise<void> => {
     showToast({ title: 'Configuration deployed', message: 'Configuration has been deployed to the game directory.', variant: 'success' });
   } catch (error) {
     console.error('[GF Dashboard] Deploy failed', error);
-    showToast({ title: 'Deploy failed', message: error instanceof Error ? error.message : 'Unknown error', variant: 'error' });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Check if it's an authentication error
+    if (errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('Access token')) {
+      showToast({ 
+        title: 'Authentication Required', 
+        message: 'Please authenticate with Discord to deploy configurations.', 
+        variant: 'error',
+        durationMs: 6000,
+      });
+    } else {
+      showToast({ title: 'Deploy failed', message: errorMessage, variant: 'error' });
+    }
   }
 };
 

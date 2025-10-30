@@ -672,7 +672,7 @@ app.post('/api/config/backups/:backupId/restore', verifyToken, async (req, res) 
   }
 });
 
-app.post('/api/config/deploy', verifyToken, async (req, res) => {
+app.post('/api/config/deploy', maybeVerifyToken, async (req, res) => {
   try {
     await deployConfigToGame();
     logger.info('Configuration deployed to game directory', { userId: req.user?.userId || 'dev' });
