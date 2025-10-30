@@ -1170,9 +1170,11 @@
         }
 
         function drawStartScreen() {
-            // Skip drawing if preview is paused by dashboard
-            if (window.GF_PREVIEW && window.GF_PREVIEW_PAUSED) {
-                return;
+            // Skip drawing if preview is paused by dashboard - check FIRST with explicit true
+            if (window.GF_PREVIEW) {
+                if (window.GF_PREVIEW_PAUSED === true) {
+                    return;
+                }
             }
             
             // Check if canvas context is still valid (iframe might be hidden)
