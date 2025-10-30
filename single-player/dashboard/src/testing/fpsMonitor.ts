@@ -71,6 +71,14 @@ const renderFPSDisplay = (metrics: DashboardMetrics | null): void => {
 
   const newFPS = metrics.fps.toFixed(1);
   
+  // Get memory display if available
+  const memoryDisplay = metrics.memoryUsage !== undefined 
+    ? `<div class="gf-fps-monitor__stat">
+        <span class="gf-fps-monitor__stat-label">Memory</span>
+        <span class="gf-fps-monitor__stat-value">${metrics.memoryUsage} MB</span>
+      </div>`
+    : '';
+
   // Create container structure if it doesn't exist
   const monitorContainer = container.querySelector('.gf-fps-monitor');
   if (!monitorContainer) {
@@ -93,6 +101,7 @@ const renderFPSDisplay = (metrics: DashboardMetrics | null): void => {
             <span class="gf-fps-monitor__stat-label">Max</span>
             <span class="gf-fps-monitor__stat-value">${maxFPS.toFixed(1)}</span>
           </div>
+          ${memoryDisplay}
         </div>
         <canvas id="fpsChart" class="gf-fps-monitor__chart" width="400" height="100"></canvas>
       </div>
@@ -110,6 +119,24 @@ const renderFPSDisplay = (metrics: DashboardMetrics | null): void => {
       statValues[0].textContent = avgFPS.toFixed(1);
       statValues[1].textContent = minFPS.toFixed(1);
       statValues[2].textContent = maxFPS.toFixed(1);
+      // Update memory if present (4th stat)
+      if (statValues.length >= 4 && metrics.memoryUsage !== undefined) {
+        statValues[3].textContent = `${metrics.memoryUsage} MB`;
+      }
+    }
+    
+    // If memory stat doesn't exist but metrics has memory, add it
+    if (metrics.memoryUsage !== undefined && !monitorContainer.querySelector('.gf-fps-monitor__stat:has(.gf-fps-monitor__stat-label:contains("Memory"))')) {
+      const statsContainer = monitorContainer.querySelector('.gf-fps-monitor__stats');
+      if (statsContainer) {
+        const memoryStat = document.createElement('div');
+        memoryStat.className = 'gf-fps-monitor__stat';
+        memoryStat.innerHTML = `
+          <span class="gf-fps-monitor__stat-label">Memory</span>
+          <span class="gf-fps-monitor__stat-value">${metrics.memoryUsage} MB</span>
+        `;
+        statsContainer.appendChild(memoryStat);
+      }
     }
   }
 

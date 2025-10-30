@@ -50,6 +50,12 @@ const renderMetrics = (metrics: DashboardMetrics | null): void => {
         <span class="gf-metrics__label">Timestamp</span>
         <span class="gf-metrics__value">${new Date(metrics.timestamp).toLocaleTimeString()}</span>
       </div>
+      ${metrics.memoryUsage !== undefined ? `
+      <div class="gf-metrics__item">
+        <span class="gf-metrics__label">Memory</span>
+        <span class="gf-metrics__value">${formatValue(metrics.memoryUsage, 0)} MB</span>
+      </div>
+      ` : ''}
     </div>
   `;
 };

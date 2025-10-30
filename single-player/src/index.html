@@ -2583,6 +2583,12 @@
             if (!window.GF_PREVIEW || !window.parent) {
                 return;
             }
+            // Get memory usage if available (Chrome/Edge only)
+            let memoryUsage;
+            if (performance.memory) {
+                // Convert bytes to MB
+                memoryUsage = Math.round(performance.memory.usedJSHeapSize / 1048576);
+            }
             const metrics = {
                 fps: 60,
                 enemies: enemies.length,
@@ -2592,6 +2598,7 @@
                 shipsHealth: ship.currentHealth,
                 afterburner: ship.afterburnerEnergy,
                 timestamp: Date.now(),
+                memoryUsage: memoryUsage,
             };
             window.parent.postMessage({ type: 'metrics', payload: metrics }, '*');
         }

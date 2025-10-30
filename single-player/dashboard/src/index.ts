@@ -212,16 +212,22 @@ const initialize = (): void => {
   initializeSettings();
   initializeProgressIndicator();
   
-  // FEATURE 1: Telemetry Panel (safest - just displays metrics)
+  // Core features enabled
   initializeTelemetryPanel();
+  initializeOverview();
+  initializeDocumentation();
   
-  // Still disabled - enable one at a time for testing:
-  // initializeAutoRefresh(); // Auto refresh - can enable after testing
-  // initializeConnectionBanner(); // Connection banner - can enable after testing
-  // initializeRealtimeSync(); // Real-time sync - test carefully
-  // initializeLivePreview(); // Live preview - test after telemetry works
-  // initializeFPSMonitor(); // FPS monitor - test after telemetry works
-  // initializeScenarioControls(); // Scenario controls - test after live preview works
+  // Re-enabling features with guards in place
+  initializeAutoRefresh();
+  initializeConnectionBanner();
+  
+  // Testing tools - enable incrementally
+  initializeLivePreview();
+  initializeFPSMonitor();
+  initializeScenarioControls();
+  
+  // Real-time sync - enable last as it can cause loops if not careful
+  initializeRealtimeSync();
 };
 
 document.addEventListener('DOMContentLoaded', initialize);
