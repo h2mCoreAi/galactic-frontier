@@ -536,6 +536,13 @@
                     applyIncomingConfig(payload);
                 } else if (type === 'spawn-enemy') {
                     spawnEnemy();
+                } else if (type === 'toggle-pause') {
+                    // Handle pause/unpause from dashboard
+                    if (payload === true && gameState === GAME_STATES.PLAYING) {
+                        gameState = GAME_STATES.PAUSED;
+                    } else if (payload === false && gameState === GAME_STATES.PAUSED) {
+                        gameState = GAME_STATES.PLAYING;
+                    }
                 } else if (type === 'toggle-overlay') {
                     // Handle debug overlay toggles
                     const { overlay, enabled } = payload;
@@ -1142,8 +1149,18 @@
         }
 
         function drawStartScreen() {
-            ctx.fillStyle = 'black';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // Check if canvas context is still valid (iframe might be hidden)
+            if (!ctx || !canvas) {
+                return;
+            }
+            try {
+                ctx.fillStyle = 'black';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            } catch (e) {
+                // Canvas might be detached or invalid - stop drawing
+                console.warn('Canvas context invalid, stopping render loop');
+                return;
+            }
 
             // Draw stars
             ctx.fillStyle = 'white';

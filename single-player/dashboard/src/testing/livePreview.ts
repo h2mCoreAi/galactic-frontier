@@ -113,6 +113,26 @@ const updatePreview: DashboardSubscriber['notify'] = (snapshot) => {
   postConfig(iframe, snapshot.config);
 };
 
+const pauseGame = (iframe: HTMLIFrameElement, paused: boolean): void => {
+  if (!iframe.contentWindow) {
+    return;
+  }
+  iframe.contentWindow.postMessage({ type: 'toggle-pause', payload: paused }, '*');
+};
+
+const handleTabVisibility = (): void => {
+  const testingTab = document.getElementById('testingTab');
+  const iframe = document.getElementById(PREVIEW_IFRAME_ID) as HTMLIFrameElement | null;
+  
+  if (!iframe || !testingTab) {
+    return;
+  }
+  
+  // Pause game when testing tab is hidden, resume when visible
+  const isVisible = !testingTab.hidden;
+  pauseGame(iframe, !isVisible);
+};
+
 export const initializeLivePreview = (): void => {
   window.addEventListener('message', handleMessage);
 
@@ -128,5 +148,17 @@ export const initializeLivePreview = (): void => {
       postConfig(iframe, dashboardState.config);
     }
   });
+  
+  // Watch for tab visibility changes
+  const observer = new MutationObserver(() => {
+    handleTabVisibility();
+  });
+  
+  const testingTab = document.getElementById('testingTab');
+  if (testingTab) {
+    observer.observe(testingTab, { attributes: true, attributeFilter: ['hidden'] });
+    // Initial check
+    handleTabVisibility();
+  }
 };
 
