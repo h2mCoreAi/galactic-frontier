@@ -1613,6 +1613,14 @@
 
                 const dist = Math.hypot(p.universeX - universeX, p.universeY - universeY);
                 if (dist < ship.size) {
+                    // Draw collision indicator if enabled
+                    if (window.GF_DEBUG_OVERLAYS && window.GF_DEBUG_OVERLAYS.collisions) {
+                        ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.arc(ship.x, ship.y, ship.size + 5, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
                     ship.currentHealth = Math.max(0, ship.currentHealth - p.damage);
                     enemyProjectiles.splice(i, 1);
                     if (ship.currentHealth <= 0) endGame();
@@ -2165,6 +2173,15 @@
                 const screenY = p.universeY - universeY + canvas.height / 2;
                 if (screenX >= 0 && screenX <= canvas.width && screenY >= 0 && screenY <= canvas.height) {
                     ctx.fillRect(screenX - 2, screenY - 1, 4, 2);
+                    
+                    // Draw projectile hitbox overlay if enabled
+                    if (window.GF_DEBUG_OVERLAYS && window.GF_DEBUG_OVERLAYS.hitboxes) {
+                        ctx.strokeStyle = 'rgba(0, 255, 255, 0.4)';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.arc(screenX, screenY, 2, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
                 }
             });
 
@@ -2207,6 +2224,28 @@
                     ctx.closePath();
                     ctx.fillStyle = 'red';
                     ctx.fill();
+                    
+                    // Draw enemy hitbox overlay if enabled
+                    if (window.GF_DEBUG_OVERLAYS && window.GF_DEBUG_OVERLAYS.hitboxes) {
+                        ctx.strokeStyle = 'rgba(0, 255, 0, 0.5)';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.arc(0, 0, e.size, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                    
+                    // Draw enemy velocity vector if enabled
+                    if (window.GF_DEBUG_OVERLAYS && window.GF_DEBUG_OVERLAYS.velocity) {
+                        const moveX = Math.cos(e.angle) * e.speed;
+                        const moveY = Math.sin(e.angle) * e.speed;
+                        ctx.strokeStyle = 'rgba(255, 255, 0, 0.6)';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(0, 0);
+                        ctx.lineTo(moveX * 10, moveY * 10);
+                        ctx.stroke();
+                    }
+                    
                     ctx.restore();
                 }
             });
