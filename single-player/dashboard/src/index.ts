@@ -6,6 +6,8 @@ import { showToast } from './toast';
 import { initializeConfigEditor } from './configEditor';
 import { initializeBreadcrumbs } from './components/breadcrumbs';
 import { initializeSettings } from './components/settings';
+import { initializeOverview } from './components/overview';
+import { initializeDocumentation } from './components/documentation';
 import { initializeAutoRefresh } from './components/autoRefresh';
 import { initializeConnectionBanner } from './components/connectionBanner';
 import { initializeProgressIndicator } from './components/progressIndicator';
@@ -15,6 +17,9 @@ import { initializeTelemetryPanel } from './testing/telemetryPanel';
 import { initializeFPSMonitor } from './testing/fpsMonitor';
 import { initializeScenarioControls } from './testing/scenarioControls';
 import type { DashboardSubscriber, TabKey } from './types';
+// Import all CSS files from main entry point
+import './configEditor/styles.css';
+import './testing/styles.css';
 
 const TAB_TO_ELEMENT: Record<TabKey, string> = {
   overview: 'overviewTab',
@@ -168,6 +173,8 @@ const handleHashChange = (): void => {
 };
 
 const initialize = (): void => {
+  console.log('[GF Dashboard] Initializing...');
+  
   const persisted = loadPersistedState();
   const initialTab = resolveTabFromHash() ?? persisted.tab;
   applyTheme(persisted.theme);
@@ -183,25 +190,38 @@ const initialize = (): void => {
 
   window.addEventListener('hashchange', handleHashChange);
 
-  bootstrapAuthentication().catch((error) => {
-    console.warn('[GF Dashboard] Failed to initialize authentication', error);
-  });
+  // Delay auth check to avoid immediate rate limiting
+  window.setTimeout(() => {
+    bootstrapAuthentication().catch((error) => {
+      console.warn('[GF Dashboard] Failed to initialize authentication', error);
+    });
+  }, 500);
 
-  loadDashboardConfig().catch((error) => {
-    console.error('[GF Dashboard] Initial config load failed', error);
-  });
+  // Delay config load slightly to avoid immediate rate limiting  
+  window.setTimeout(() => {
+    loadDashboardConfig().catch((error) => {
+      console.error('[GF Dashboard] Initial config load failed', error);
+    });
+  }, 1000);
 
+  // Re-enabling features incrementally - TEST ONE AT A TIME
+  initializeOverview();
+  initializeDocumentation();
   initializeConfigEditor();
   initializeBreadcrumbs();
   initializeSettings();
-  initializeAutoRefresh();
-  initializeConnectionBanner();
   initializeProgressIndicator();
-  initializeRealtimeSync();
-  initializeLivePreview();
+  
+  // FEATURE 1: Telemetry Panel (safest - just displays metrics)
   initializeTelemetryPanel();
-  initializeFPSMonitor();
-  initializeScenarioControls();
+  
+  // Still disabled - enable one at a time for testing:
+  // initializeAutoRefresh(); // Auto refresh - can enable after testing
+  // initializeConnectionBanner(); // Connection banner - can enable after testing
+  // initializeRealtimeSync(); // Real-time sync - test carefully
+  // initializeLivePreview(); // Live preview - test after telemetry works
+  // initializeFPSMonitor(); // FPS monitor - test after telemetry works
+  // initializeScenarioControls(); // Scenario controls - test after live preview works
 };
 
 document.addEventListener('DOMContentLoaded', initialize);

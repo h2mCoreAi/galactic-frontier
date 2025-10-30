@@ -21,49 +21,83 @@ const renderShell = (config: GalacticFrontierConfig): void => {
   }
 
   container.innerHTML = `
-    <div class="gf-config-layout">
-      <section class="gf-config-panel" aria-labelledby="config-json-heading">
-        <header class="gf-config-panel__header">
-          <h3 id="config-json-heading">Raw Configuration</h3>
-          <p>Direct JSON editing with validation.</p>
-        </header>
-        <textarea id="gf-config-json-editor" class="gf-config-editor__textarea" rows="28" spellcheck="false"></textarea>
-      </section>
-      <section class="gf-config-panel" aria-labelledby="config-ship-heading">
-        <header class="gf-config-panel__header">
-          <h3 id="config-ship-heading">Ship Configuration</h3>
-          <p>Edit ship movement, health, and afterburner settings.</p>
-        </header>
-        <div id="shipEditor"></div>
-      </section>
-      <section class="gf-config-panel" aria-labelledby="config-enemy-heading">
-        <header class="gf-config-panel__header">
-          <h3 id="config-enemy-heading">Enemy Editor</h3>
-          <p>Manage enemy types, damage, and spawn behaviour.</p>
-        </header>
-        <div id="enemyEditor"></div>
-      </section>
+    <div class="gf-config-tabs">
+      <div class="gf-config-tabs__nav" role="tablist" aria-label="Configuration editor sections">
+        <button class="gf-config-tabs__tab" role="tab" aria-selected="true" data-configtab="raw">Raw JSON</button>
+        <button class="gf-config-tabs__tab" role="tab" aria-selected="false" data-configtab="ship">Ship</button>
+        <button class="gf-config-tabs__tab" role="tab" aria-selected="false" data-configtab="enemy">Enemy</button>
+        <button class="gf-config-tabs__tab" role="tab" aria-selected="false" data-configtab="projectile">Projectiles</button>
+        <button class="gf-config-tabs__tab" role="tab" aria-selected="false" data-configtab="game">Game Settings</button>
+      </div>
+      <div class="gf-config-tabs__panels">
+        <section class="gf-config-tabs__panel" data-configtab-panel="raw" aria-labelledby="config-json-heading" style="display: flex;">
+          <div class="gf-config-panel">
+            <header class="gf-config-panel__header">
+              <h3 id="config-json-heading">Raw Configuration</h3>
+              <p>Direct JSON editing with validation.</p>
+            </header>
+            <textarea id="gf-config-json-editor" class="gf-config-editor__textarea" rows="28" spellcheck="false"></textarea>
+          </div>
+        </section>
+        <section class="gf-config-tabs__panel" data-configtab-panel="ship" aria-labelledby="config-ship-heading" style="display: none;" hidden>
+          <div class="gf-config-panel">
+            <header class="gf-config-panel__header">
+              <h3 id="config-ship-heading">Ship Configuration</h3>
+              <p>Edit ship movement, health, and afterburner settings.</p>
+            </header>
+            <div id="shipEditor"></div>
+          </div>
+        </section>
+        <section class="gf-config-tabs__panel" data-configtab-panel="enemy" aria-labelledby="config-enemy-heading" style="display: none;" hidden>
+          <div class="gf-config-panel">
+            <header class="gf-config-panel__header">
+              <h3 id="config-enemy-heading">Enemy Editor</h3>
+              <p>Manage enemy types, damage, and spawn behaviour.</p>
+            </header>
+            <div id="enemyEditor"></div>
+          </div>
+        </section>
+        <section class="gf-config-tabs__panel" data-configtab-panel="projectile" aria-labelledby="config-projectile-heading" style="display: none;" hidden>
+          <div class="gf-config-panel">
+            <header class="gf-config-panel__header">
+              <h3 id="config-projectile-heading">Projectile Settings</h3>
+              <p>Tune projectile speeds, life, cooldown, and fan-shot behaviour.</p>
+            </header>
+            <div id="projectileEditor"></div>
+          </div>
+        </section>
+        <section class="gf-config-tabs__panel" data-configtab-panel="game" aria-labelledby="config-game-heading" style="display: none;" hidden>
+          <div class="gf-config-panel">
+            <header class="gf-config-panel__header">
+              <h3 id="config-game-heading">Game Settings</h3>
+              <p>Control spawn intervals, power-ups, level progression, and scaling parameters.</p>
+            </header>
+            <div id="gameEditor"></div>
+          </div>
+        </section>
+      </div>
     </div>
-    <section class="gf-config-panel" aria-labelledby="config-projectile-heading">
-      <header class="gf-config-panel__header">
-        <h3 id="config-projectile-heading">Projectiles & Game Settings</h3>
-        <p>Tune projectile physics and overarching gameplay pacing.</p>
-      </header>
-      <div id="projectileEditor"></div>
-    </section>
   `;
 
   const textarea = getTextarea();
   if (textarea) {
     textarea.value = `${JSON.stringify(config, null, 2)}\n`;
+    let inputTimeout: number | null = null;
     textarea.addEventListener('input', () => {
-      try {
-        const parsed = JSON.parse(textarea.value) as GalacticFrontierConfig;
-        actions.setConfig(parsed);
-        actions.setError(null);
-      } catch (error) {
-        actions.setError('Invalid JSON detected. Fix errors before saving.');
+      // Debounce rapid input changes to prevent cascading updates
+      if (inputTimeout !== null) {
+        window.clearTimeout(inputTimeout);
       }
+      inputTimeout = window.setTimeout(() => {
+        try {
+          const parsed = JSON.parse(textarea.value) as GalacticFrontierConfig;
+          actions.setConfig(parsed);
+          actions.setError(null);
+        } catch (error) {
+          actions.setError('Invalid JSON detected. Fix errors before saving.');
+        }
+        inputTimeout = null;
+      }, 300); // 300ms debounce
     });
   }
 
@@ -71,15 +105,41 @@ const renderShell = (config: GalacticFrontierConfig): void => {
   initializeEnemyEditor();
   initializeProjectileEditor();
   initializeImportControls();
+
+  // Wire up tab switching
+  const tabNav = container.querySelector('.gf-config-tabs__nav');
+  if (tabNav) {
+    const showTab = (tabName: string) => {
+      // Update tab buttons
+      document.querySelectorAll<HTMLButtonElement>('.gf-config-tabs__tab').forEach((btn) => {
+        const isSelected = btn.dataset.configtab === tabName;
+        btn.setAttribute('aria-selected', String(isSelected));
+      });
+      // Show/hide panels
+      document.querySelectorAll<HTMLElement>('[data-configtab-panel]').forEach((panel) => {
+        const shouldShow = panel.dataset.configtabPanel === tabName;
+        panel.hidden = !shouldShow;
+        panel.style.display = shouldShow ? 'flex' : 'none';
+      });
+    };
+    tabNav.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest('.gf-config-tabs__tab') as HTMLButtonElement | null;
+      if (!btn) return;
+      showTab(btn.dataset.configtab || 'raw');
+    });
+    showTab('raw'); // Start with raw JSON tab
+  }
 };
 
 const renderJsonEditor = (config: GalacticFrontierConfig): void => {
   const textarea = getTextarea();
+  // If textarea doesn't exist, render the full shell with all editors
   if (!textarea) {
     renderShell(config);
     return;
   }
 
+  // Just update the textarea value if it already exists
   textarea.value = `${JSON.stringify(config, null, 2)}\n`;
 };
 
@@ -160,11 +220,21 @@ const bindDeployButton = (): void => {
   button.addEventListener('click', handleDeployClick);
 };
 
+let hasRenderedShell = false;
+
 const updateEditor: DashboardSubscriber['notify'] = (snapshot) => {
   if (!snapshot.config) {
     return;
   }
-  renderJsonEditor(snapshot.config);
+  
+  // If shell hasn't been rendered yet, render it now
+  if (!hasRenderedShell) {
+    renderShell(snapshot.config);
+    hasRenderedShell = true;
+  } else {
+    // Otherwise just update the JSON editor
+    renderJsonEditor(snapshot.config);
+  }
 };
 
 export const initializeConfigEditor = (): void => {
@@ -176,7 +246,9 @@ export const initializeConfigEditor = (): void => {
   };
   subscribe(subscriber);
 
+  // If config already exists, render the shell immediately
   if (dashboardState.config) {
-    renderJsonEditor(dashboardState.config);
+    renderShell(dashboardState.config);
+    hasRenderedShell = true;
   }
 };

@@ -21,10 +21,19 @@ const ensureContainer = (): HTMLElement => {
   return container;
 };
 
+// Fallback UUID generator for browsers without crypto.randomUUID
+const generateUUID = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback for older browsers
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+};
+
 const createToastElement = ({ title, message, variant = 'info' }: ToastOptions): HTMLElement => {
   const toast = document.createElement('div');
   toast.className = `gf-toast gf-toast--${variant}`;
-  toast.id = `${ID_PREFIX}${crypto.randomUUID()}`;
+  toast.id = `${ID_PREFIX}${generateUUID()}`;
 
   const toastTitle = document.createElement('div');
   toastTitle.className = 'gf-toast__title';

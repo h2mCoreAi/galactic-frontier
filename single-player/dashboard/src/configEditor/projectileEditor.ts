@@ -64,7 +64,7 @@ const createElements = (): ProjectileEditorElements => {
         <button class="gf-subtabs__tab" role="tab" aria-selected="false" data-gametab="scaling">Level Scaling</button>
       </div>
       <form id="gameForm" class="gf-form" autocomplete="off">
-        <section class="gf-subpanel" data-gametab-panel="settings">
+        <section class="gf-subpanel" data-gametab-panel="settings" style="display: block;">
           <div class="gf-group__title">Game Settings</div>
           <div class="gf-group__desc">Control spawn intervals, power-ups, and level progression parameters.</div>
           <div class="gf-group__grid">
@@ -115,7 +115,7 @@ const createElements = (): ProjectileEditorElements => {
             </label>
           </div>
         </section>
-        <section class="gf-subpanel" data-gametab-panel="spawn" hidden>
+        <section class="gf-subpanel" data-gametab-panel="spawn" style="display: none;" hidden>
           <div class="gf-group__title">Spawn & Limits</div>
           <div class="gf-group__desc">Weight enemy types, cap enemies, and tune per-level spawn rate.</div>
           <div class="gf-group__grid">
@@ -151,7 +151,7 @@ const createElements = (): ProjectileEditorElements => {
             </label>
           </div>
         </section>
-        <section class="gf-subpanel" data-gametab-panel="scaling" hidden>
+        <section class="gf-subpanel" data-gametab-panel="scaling" style="display: none;" hidden>
           <div class="gf-group__title">Level Scaling</div>
           <div class="gf-group__desc">Per-level multipliers applied to enemies.</div>
           <div class="gf-group__grid">
@@ -221,35 +221,57 @@ const getGameInputs = () => ({
 
 const populateProjectile = (config: GalacticFrontierConfig['projectiles']): void => {
   const inputs = getProjectileInputs();
+  
+  // Check if inputs exist before accessing
+  if (!inputs.speed || !inputs.life || !inputs.cooldown) {
+    return; // Elements not created yet
+  }
+  
   inputs.speed.value = String(config.speed);
   inputs.life.value = String(config.life);
   inputs.cooldown.value = String(config.cooldown);
-  inputs.fanShotCount.value = String(config.fanShotCount);
-  inputs.fanShotAngle.value = String(config.fanShotAngle);
+  if (inputs.fanShotCount) inputs.fanShotCount.value = String(config.fanShotCount);
+  if (inputs.fanShotAngle) inputs.fanShotAngle.value = String(config.fanShotAngle);
 };
 
 const populateGame = (config: GalacticFrontierConfig['game']): void => {
+  // Early return if game container doesn't exist yet
+  if (!elements?.gameContainer) {
+    return;
+  }
+  
   const inputs = getGameInputs();
-  inputs.scoreToLevelUp.value = String(config.scoreToLevelUp);
-  inputs.minSpawnInterval.value = String(config.minSpawnInterval);
-  inputs.maxSpawnInterval.value = String(config.maxSpawnInterval);
-  inputs.minHealthSpawnInterval.value = String(config.minHealthSpawnInterval);
-  inputs.maxHealthSpawnInterval.value = String(config.maxHealthSpawnInterval);
-  inputs.healthPowerUpValue.value = String(config.healthPowerUpValue);
-  inputs.minFanShotSpawnInterval.value = String(config.minFanShotSpawnInterval);
-  inputs.maxFanShotSpawnInterval.value = String(config.maxFanShotSpawnInterval);
-  inputs.fanShotDuration.value = String(config.fanShotDuration);
-  inputs.maxEnemies.value = String(config.maxEnemies ?? 50);
-  inputs.spawnRatePerLevelFactor.value = String(config.spawnRatePerLevelFactor ?? 0.9);
-  inputs.minSpawnRateClamp.value = String(config.minSpawnRateClamp ?? 0.3);
-  const weights = config.enemyTypeWeights ?? { small: 0.5, medium: 0.3, large: 0.2 };
-  inputs.weightSmall.value = String(weights.small);
-  inputs.weightMedium.value = String(weights.medium);
-  inputs.weightLarge.value = String(weights.large);
-  const scale = config.levelScaling ?? { enemySpeedPerLevel: 1.05, projectileDamagePerLevel: 1.1, collisionDamagePerLevel: 1.15 };
-  inputs.scaleEnemySpeed.value = String(scale.enemySpeedPerLevel ?? 1.05);
-  inputs.scaleProjDamage.value = String(scale.projectileDamagePerLevel ?? 1.1);
-  inputs.scaleCollDamage.value = String(scale.collisionDamagePerLevel ?? 1.15);
+  
+  // Check if all required inputs exist before populating
+  if (!inputs.scoreToLevelUp || !inputs.minSpawnInterval || !inputs.maxSpawnInterval) {
+    return; // Elements not created yet
+  }
+  
+  try {
+    inputs.scoreToLevelUp.value = String(config.scoreToLevelUp);
+    inputs.minSpawnInterval.value = String(config.minSpawnInterval);
+    inputs.maxSpawnInterval.value = String(config.maxSpawnInterval);
+    
+    if (inputs.minHealthSpawnInterval) inputs.minHealthSpawnInterval.value = String(config.minHealthSpawnInterval);
+    if (inputs.maxHealthSpawnInterval) inputs.maxHealthSpawnInterval.value = String(config.maxHealthSpawnInterval);
+    if (inputs.healthPowerUpValue) inputs.healthPowerUpValue.value = String(config.healthPowerUpValue);
+    if (inputs.minFanShotSpawnInterval) inputs.minFanShotSpawnInterval.value = String(config.minFanShotSpawnInterval);
+    if (inputs.maxFanShotSpawnInterval) inputs.maxFanShotSpawnInterval.value = String(config.maxFanShotSpawnInterval);
+    if (inputs.fanShotDuration) inputs.fanShotDuration.value = String(config.fanShotDuration);
+    if (inputs.maxEnemies) inputs.maxEnemies.value = String(config.maxEnemies ?? 50);
+    if (inputs.spawnRatePerLevelFactor) inputs.spawnRatePerLevelFactor.value = String(config.spawnRatePerLevelFactor ?? 0.9);
+    if (inputs.minSpawnRateClamp) inputs.minSpawnRateClamp.value = String(config.minSpawnRateClamp ?? 0.3);
+    const weights = config.enemyTypeWeights ?? { small: 0.5, medium: 0.3, large: 0.2 };
+    if (inputs.weightSmall) inputs.weightSmall.value = String(weights.small);
+    if (inputs.weightMedium) inputs.weightMedium.value = String(weights.medium);
+    if (inputs.weightLarge) inputs.weightLarge.value = String(weights.large);
+    const scale = config.levelScaling ?? { enemySpeedPerLevel: 1.05, projectileDamagePerLevel: 1.1, collisionDamagePerLevel: 1.15 };
+    if (inputs.scaleEnemySpeed) inputs.scaleEnemySpeed.value = String(scale.enemySpeedPerLevel ?? 1.05);
+    if (inputs.scaleProjDamage) inputs.scaleProjDamage.value = String(scale.projectileDamagePerLevel ?? 1.1);
+    if (inputs.scaleCollDamage) inputs.scaleCollDamage.value = String(scale.collisionDamagePerLevel ?? 1.15);
+  } catch (error) {
+    console.warn('[GF Dashboard] Failed to populate game inputs', error);
+  }
 };
 
 const applyProjectileInputs = (): void => {
@@ -301,10 +323,20 @@ const applyGameInputs = (): void => {
   });
 };
 
+let lastConfigHash: string | null = null;
+
 const updateEditor: DashboardSubscriber['notify'] = (snapshot) => {
   if (!elements || !snapshot.config) {
     return;
   }
+  
+  // Only update if config actually changed to prevent unnecessary re-renders
+  const configHash = JSON.stringify(snapshot.config);
+  if (lastConfigHash === configHash) {
+    return; // Config hasn't changed
+  }
+  lastConfigHash = configHash;
+  
   populateProjectile(snapshot.config.projectiles);
   populateGame(snapshot.config.game);
 };
@@ -321,20 +353,31 @@ export const initializeProjectileEditor = (): void => {
   elements.gameForm?.addEventListener('change', applyGameInputs);
   elements.gameForm?.addEventListener('change', applyGameInputs);
 
-  // wire sub-tab switching
-  const subnav = document.querySelector('.gf-subtabs__nav');
-  if (subnav) {
-    const show = (name: string) => {
-      document.querySelectorAll<HTMLButtonElement>('.gf-subtabs__tab').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.gametab === name)));
-      document.querySelectorAll<HTMLElement>('[data-gametab-panel]').forEach((p) => { p.hidden = p.dataset.gametabPanel !== name; });
-    };
-    subnav.addEventListener('click', (e) => {
-      const btn = (e.target as HTMLElement).closest('.gf-subtabs__tab') as HTMLButtonElement | null;
-      if (!btn) return;
-      show(btn.dataset.gametab || 'settings');
-    });
-    show('settings');
-  }
+  // wire sub-tab switching - use setTimeout to ensure DOM is ready
+  window.setTimeout(() => {
+    const subnav = document.querySelector('.gf-subtabs__nav');
+    if (subnav) {
+      const show = (name: string) => {
+        // Update tab buttons
+        document.querySelectorAll<HTMLButtonElement>('.gf-subtabs__tab').forEach((b) => {
+          const isSelected = b.dataset.gametab === name;
+          b.setAttribute('aria-selected', String(isSelected));
+        });
+        // Show/hide panels with explicit display control
+        document.querySelectorAll<HTMLElement>('[data-gametab-panel]').forEach((p) => {
+          const shouldShow = p.dataset.gametabPanel === name;
+          p.hidden = !shouldShow;
+          p.style.display = shouldShow ? 'block' : 'none';
+        });
+      };
+      subnav.addEventListener('click', (e) => {
+        const btn = (e.target as HTMLElement).closest('.gf-subtabs__tab') as HTMLButtonElement | null;
+        if (!btn) return;
+        show(btn.dataset.gametab || 'settings');
+      });
+      show('settings'); // Initialize with settings tab visible
+    }
+  }, 100);
 
   const subscriber: DashboardSubscriber = {
     id: 'projectile-editor',

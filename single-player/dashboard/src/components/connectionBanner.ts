@@ -53,9 +53,22 @@ const updateBanner: DashboardSubscriber['notify'] = (snapshot) => {
   renderBanner(snapshot.connectivity.backendAvailable, snapshot.connectivity.lastSynced);
 };
 
+let lastBackendAvailable: boolean | null = null;
+let lastCheckedTime: string | null = null;
+
 const checkBackend = async (): Promise<void> => {
   const available = await checkHealth().catch(() => false);
-  actions.setConnectivity({ backendAvailable: available, lastChecked: new Date().toISOString() });
+  const checkedTime = new Date().toISOString();
+  
+  // Only update if values actually changed to prevent unnecessary notifications
+  if (lastBackendAvailable !== available || lastCheckedTime !== checkedTime) {
+    lastBackendAvailable = available;
+    lastCheckedTime = checkedTime;
+    actions.setConnectivity({ 
+      backendAvailable: available, 
+      lastChecked: checkedTime 
+    });
+  }
 };
 
 export const initializeConnectionBanner = (): void => {
@@ -70,10 +83,11 @@ export const initializeConnectionBanner = (): void => {
     actions.setConnectivity({ backendAvailable: false, lastChecked: new Date().toISOString() });
   });
 
-  window.setInterval(() => {
-    checkBackend().catch((error) => {
-      console.warn('[GF Dashboard] Backend availability check failed', error);
-    });
-  }, 30000);
+  // Temporarily disabled interval to prevent crashes
+  // window.setInterval(() => {
+  //   checkBackend().catch((error) => {
+  //     console.warn('[GF Dashboard] Backend availability check failed', error);
+  //   });
+  // }, 30000);
 };
 

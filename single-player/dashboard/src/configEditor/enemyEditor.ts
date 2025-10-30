@@ -101,6 +101,7 @@ const createElements = (): EnemyEditorElements | null => {
 
 let elements: EnemyEditorElements | null = null;
 let selectedType: string | null = null;
+let lastEnemiesHash: string | null = null;
 
 const renderEnemyCards = (enemies: EnemyConfig[]): void => {
   if (!elements) {
@@ -233,6 +234,13 @@ const updateEditor: DashboardSubscriber['notify'] = (snapshot) => {
     selectedType = snapshot.config.enemies[0].type;
   }
 
+  // Only update if enemies actually changed
+  const enemiesHash = JSON.stringify(snapshot.config.enemies);
+  if (lastEnemiesHash === enemiesHash) {
+    return; // Enemies haven't changed, skip update
+  }
+  lastEnemiesHash = enemiesHash;
+  
   renderEnemyCards(snapshot.config.enemies);
   if (selectedType) {
     const activeEnemy = snapshot.config.enemies.find((enemy) => enemy.type === selectedType);

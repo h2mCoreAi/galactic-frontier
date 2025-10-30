@@ -14,8 +14,16 @@ const clearTimer = (): void => {
   }
 };
 
+let isSyncing = false; // Prevent concurrent syncs
+
 const performSync = async (): Promise<void> => {
+  // Prevent concurrent sync operations
+  if (isSyncing) {
+    return;
+  }
+  
   try {
+    isSyncing = true;
     const config = await fetchConfig();
     const currentConfig = dashboardState.config;
     
@@ -28,23 +36,32 @@ const performSync = async (): Promise<void> => {
         actions.setConfig(config, false);
         setCachedConfig(config);
         lastSyncTime = Date.now();
-        actions.setConnectivity({
-          ...dashboardState.connectivity,
-          lastSynced: new Date().toISOString(),
-        });
+        // Only update connectivity if lastSynced actually changed to prevent loops
+        const newLastSynced = new Date().toISOString();
+        if (dashboardState.connectivity.lastSynced !== newLastSynced) {
+          actions.setConnectivity({
+            ...dashboardState.connectivity,
+            lastSynced: newLastSynced,
+          });
+        }
       }
     } else if (!currentConfig) {
       // If no config loaded, set it
       actions.setConfig(config, false);
       setCachedConfig(config);
       lastSyncTime = Date.now();
-      actions.setConnectivity({
-        ...dashboardState.connectivity,
-        lastSynced: new Date().toISOString(),
-      });
+      const newLastSynced = new Date().toISOString();
+      if (dashboardState.connectivity.lastSynced !== newLastSynced) {
+        actions.setConnectivity({
+          ...dashboardState.connectivity,
+          lastSynced: newLastSynced,
+        });
+      }
     }
   } catch (error) {
     console.warn('[GF Dashboard] Real-time sync failed', error);
+  } finally {
+    isSyncing = false;
   }
 };
 
@@ -59,12 +76,19 @@ const stopSync = (): void => {
   clearTimer();
 };
 
+let lastUnsavedChanges = false;
+
 const updateSyncState: DashboardSubscriber['notify'] = (snapshot) => {
-  // Stop sync if user has unsaved changes to prevent overwriting
-  if (snapshot.hasUnsavedChanges) {
-    stopSync();
-  } else if (!syncTimer) {
-    startSync();
+  // Only react to changes in hasUnsavedChanges to prevent unnecessary checks
+  if (snapshot.hasUnsavedChanges !== lastUnsavedChanges) {
+    lastUnsavedChanges = snapshot.hasUnsavedChanges;
+    
+    // Stop sync if user has unsaved changes to prevent overwriting
+    if (snapshot.hasUnsavedChanges) {
+      stopSync();
+    } else if (!syncTimer) {
+      startSync();
+    }
   }
 };
 

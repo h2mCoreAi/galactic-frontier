@@ -44,15 +44,28 @@ const createSnapshot = (): MutableSnapshot => {
 const snapshot: MutableSnapshot = createSnapshot();
 const subscribers: DashboardSubscriber[] = [];
 
+let isNotifying = false; // Prevent recursive notifications
+
 const notifySubscribers = (): void => {
-  persistState(snapshot);
-  subscribers.forEach((subscriber) => {
-    try {
-      subscriber.notify(snapshot);
-    } catch (error) {
-      console.error('[GF Dashboard] Subscriber notification failed', error);
-    }
-  });
+  // Prevent recursive notification loops
+  if (isNotifying) {
+    console.warn('[GF Dashboard] Notification already in progress, skipping to prevent loop');
+    return;
+  }
+  
+  try {
+    isNotifying = true;
+    persistState(snapshot);
+    subscribers.forEach((subscriber) => {
+      try {
+        subscriber.notify(snapshot);
+      } catch (error) {
+        console.error(`[GF Dashboard] Subscriber ${subscriber.id} notification failed:`, error);
+      }
+    });
+  } finally {
+    isNotifying = false;
+  }
 };
 
 const updateTab = (tab: TabKey): void => {
@@ -88,14 +101,34 @@ const updateBreadcrumbs: DashboardActions['setBreadcrumbs'] = (breadcrumbs) => {
 };
 
 const updateConnectivity: DashboardActions['setConnectivity'] = (connectivity) => {
-  snapshot.connectivity = {
-    ...snapshot.connectivity,
+  // Check if anything actually changed before notifying
+  const oldConn = snapshot.connectivity;
+  const newConn = {
+    ...oldConn,
     ...connectivity,
   };
-  notifySubscribers();
+  
+  // Only notify if something actually changed
+  if (
+    oldConn.backendAvailable !== newConn.backendAvailable ||
+    oldConn.lastChecked !== newConn.lastChecked ||
+    oldConn.lastSynced !== newConn.lastSynced
+  ) {
+    snapshot.connectivity = newConn;
+    notifySubscribers();
+  }
 };
 
+let lastConfigHash: string | null = null;
+
 const updateConfig = (config: GalacticFrontierConfig, markDirty = true): void => {
+  // Prevent redundant updates by comparing config hash
+  const configHash = JSON.stringify(config);
+  if (lastConfigHash === configHash && snapshot.config !== null) {
+    return; // Config hasn't changed, skip update
+  }
+  lastConfigHash = configHash;
+  
   snapshot.config = structuredClone(config);
   if (!snapshot.originalConfig) {
     snapshot.originalConfig = structuredClone(config);
@@ -122,8 +155,14 @@ const updateBackups: DashboardActions['setBackups'] = (backups) => {
 };
 
 const updateMetrics: DashboardActions['setMetrics'] = (metrics) => {
-  snapshot.metrics = metrics ? { ...metrics } : null;
-  notifySubscribers();
+  // Only update if metrics actually changed (compare timestamps)
+  const currentTimestamp = snapshot.metrics?.timestamp;
+  const newTimestamp = metrics?.timestamp;
+  
+  if (currentTimestamp !== newTimestamp) {
+    snapshot.metrics = metrics ? { ...metrics } : null;
+    notifySubscribers();
+  }
 };
 
 const updateAuthentication: DashboardActions['setAuthentication'] = (authenticated) => {

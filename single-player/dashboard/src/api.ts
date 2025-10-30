@@ -6,7 +6,7 @@ const JSON_HEADERS: HeadersInit = {
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
-const RETRIABLE_STATUS_CODES = [408, 429, 500, 502, 503, 504];
+const RETRIABLE_STATUS_CODES = [408, 500, 502, 503, 504]; // 429 removed - rate limits shouldn't retry immediately
 
 const getAuthHeaders = (): HeadersInit => {
   try {
@@ -22,6 +22,10 @@ const delay = (ms: number): Promise<void> => new Promise((resolve) => {
 });
 
 const isRetriableError = (status: number, error: Error): boolean => {
+  // Never retry rate limit errors (429) - they need manual intervention or longer waits
+  if (status === 429) {
+    return false;
+  }
   if (RETRIABLE_STATUS_CODES.includes(status)) {
     return true;
   }

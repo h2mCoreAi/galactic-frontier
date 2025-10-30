@@ -40,16 +40,27 @@ const getMaxFPS = (): number => {
   return Math.max(...fpsHistory.values);
 };
 
+let lastMetricsTimestamp = 0;
+
 const renderFPSDisplay = (metrics: DashboardMetrics | null): void => {
   const container = document.getElementById('fpsMonitor');
   if (!container) {
     return;
   }
 
+  // Only render if metrics are null or metrics have actually changed
   if (!metrics) {
-    container.innerHTML = '<p>Waiting for game preview to start...</p>';
+    if (container.innerHTML.trim() === '') {
+      container.innerHTML = '<p>Waiting for game preview to start...</p>';
+    }
     return;
   }
+
+  // Skip if metrics haven't changed (prevent unnecessary re-renders)
+  if (metrics.timestamp === lastMetricsTimestamp) {
+    return;
+  }
+  lastMetricsTimestamp = metrics.timestamp;
 
   addFPSValue(metrics.fps);
   const avgFPS = getAverageFPS();
@@ -58,32 +69,52 @@ const renderFPSDisplay = (metrics: DashboardMetrics | null): void => {
 
   const fpsColor = metrics.fps >= 55 ? 'var(--gf-success)' : metrics.fps >= 30 ? 'var(--gf-warning)' : 'var(--gf-danger)';
 
-  container.innerHTML = `
-    <div class="gf-fps-monitor">
-      <div class="gf-fps-monitor__current">
-        <span class="gf-fps-monitor__label">Current FPS</span>
-        <span class="gf-fps-monitor__value" style="color: ${fpsColor}">${metrics.fps.toFixed(1)}</span>
+  const newFPS = metrics.fps.toFixed(1);
+  
+  // Create container structure if it doesn't exist
+  const monitorContainer = container.querySelector('.gf-fps-monitor');
+  if (!monitorContainer) {
+    container.innerHTML = `
+      <div class="gf-fps-monitor">
+        <div class="gf-fps-monitor__current">
+          <span class="gf-fps-monitor__label">Current FPS</span>
+          <span class="gf-fps-monitor__value" style="color: ${fpsColor}">${newFPS}</span>
+        </div>
+        <div class="gf-fps-monitor__stats">
+          <div class="gf-fps-monitor__stat">
+            <span class="gf-fps-monitor__stat-label">Avg</span>
+            <span class="gf-fps-monitor__stat-value">${avgFPS.toFixed(1)}</span>
+          </div>
+          <div class="gf-fps-monitor__stat">
+            <span class="gf-fps-monitor__stat-label">Min</span>
+            <span class="gf-fps-monitor__stat-value">${minFPS.toFixed(1)}</span>
+          </div>
+          <div class="gf-fps-monitor__stat">
+            <span class="gf-fps-monitor__stat-label">Max</span>
+            <span class="gf-fps-monitor__stat-value">${maxFPS.toFixed(1)}</span>
+          </div>
+        </div>
+        <canvas id="fpsChart" class="gf-fps-monitor__chart" width="400" height="100"></canvas>
       </div>
-      <div class="gf-fps-monitor__stats">
-        <div class="gf-fps-monitor__stat">
-          <span class="gf-fps-monitor__stat-label">Avg</span>
-          <span class="gf-fps-monitor__stat-value">${avgFPS.toFixed(1)}</span>
-        </div>
-        <div class="gf-fps-monitor__stat">
-          <span class="gf-fps-monitor__stat-label">Min</span>
-          <span class="gf-fps-monitor__stat-value">${minFPS.toFixed(1)}</span>
-        </div>
-        <div class="gf-fps-monitor__stat">
-          <span class="gf-fps-monitor__stat-label">Max</span>
-          <span class="gf-fps-monitor__stat-value">${maxFPS.toFixed(1)}</span>
-        </div>
-      </div>
-      <canvas id="fpsChart" class="gf-fps-monitor__chart" width="400" height="100"></canvas>
-    </div>
-  `;
+    `;
+  } else {
+    // Update existing values without recreating entire structure
+    const valueElement = monitorContainer.querySelector('.gf-fps-monitor__value') as HTMLElement | null;
+    if (valueElement) {
+      valueElement.textContent = newFPS;
+      valueElement.style.color = fpsColor;
+    }
+    
+    const statValues = monitorContainer.querySelectorAll('.gf-fps-monitor__stat-value');
+    if (statValues.length >= 3) {
+      statValues[0].textContent = avgFPS.toFixed(1);
+      statValues[1].textContent = minFPS.toFixed(1);
+      statValues[2].textContent = maxFPS.toFixed(1);
+    }
+  }
 
-  // Draw FPS chart
-  const canvas = document.getElementById('fpsChart') as HTMLCanvasElement | null;
+  // Draw FPS chart (only if canvas exists)
+  const canvas = container.querySelector('#fpsChart') as HTMLCanvasElement | null;
   if (canvas && fpsHistory.values.length > 1) {
     const ctx = canvas.getContext('2d');
     if (ctx) {

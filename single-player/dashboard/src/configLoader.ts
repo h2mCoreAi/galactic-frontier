@@ -81,9 +81,19 @@ export const validateConfig = (config: GalacticFrontierConfig): void => {
   validateGame(config.game);
 };
 
+let isLoadingConfig = false; // Prevent concurrent config loads
+
 export const loadDashboardConfig = async (): Promise<void> => {
-  actions.setLoading(true);
+  // Prevent concurrent config loads that cause rate limiting
+  if (isLoadingConfig) {
+    console.log('[GF Dashboard] Config load already in progress, skipping...');
+    return;
+  }
+  
   try {
+    isLoadingConfig = true;
+    actions.setLoading(true);
+    
     // Try cache first
     const cached = getCachedConfig();
     if (cached) {
@@ -122,5 +132,6 @@ export const loadDashboardConfig = async (): Promise<void> => {
     actions.setError(error instanceof Error ? error.message : 'Failed to load configuration.');
   } finally {
     actions.setLoading(false);
+    isLoadingConfig = false;
   }
 };

@@ -6,20 +6,33 @@ const containerId = 'shipEditor';
 const getContainer = (): HTMLElement | null => document.getElementById(containerId);
 
 const numberInput = (id: string, label: string, value: number, step = 0.01, help?: string): string => `
-  <label class="gf-form__field gf-field--inline">
-    <span class="gf-form__label">${label}</span>
-    <input id="${id}" class="gf-input" type="text"  pattern="[0-9]*.?[0-9]*" value="${String(value)}"/>
+  <label class="gf-form__field">
+    <span>${label}</span>
+    <input id="${id}" type="text" pattern="[0-9]*.?[0-9]*" value="${String(value)}"/>
     ${help ? `<small class="gf-help">${help}</small>` : ''}
   </label>
 `;
+
+let lastRenderHash: string | null = null;
+let listenersAttached = false;
 
 const render = (config: GalacticFrontierConfig | null): void => {
   const root = getContainer();
   if (!root) return;
   if (!config) {
-    root.innerHTML = '<p>Configuration not loaded.</p>';
+    if (root.innerHTML !== '<p>Configuration not loaded.</p>') {
+      root.innerHTML = '<p>Configuration not loaded.</p>';
+    }
     return;
   }
+  
+  // Check if ship config actually changed before re-rendering
+  const shipHash = JSON.stringify(config.ship);
+  if (lastRenderHash === shipHash && listenersAttached) {
+    return; // Config hasn't changed, skip re-render
+  }
+  lastRenderHash = shipHash;
+  
   const ship = config.ship;
   root.innerHTML = `
     <div class="gf-form gf-form--grid">
@@ -63,10 +76,15 @@ const render = (config: GalacticFrontierConfig | null): void => {
   onChange('ship-afterburnerMax', (c) => c.ship.afterburnerMax, (c, v) => { c.ship.afterburnerMax = v; });
   onChange('ship-afterburnerDepleteRate', (c) => c.ship.afterburnerDepleteRate, (c, v) => { c.ship.afterburnerDepleteRate = v; });
   onChange('ship-afterburnerRegenRate', (c) => c.ship.afterburnerRegenRate, (c, v) => { c.ship.afterburnerRegenRate = v; });
+  
+  listenersAttached = true;
 };
 
 const onState: DashboardSubscriber['notify'] = (snapshot) => {
-  render(snapshot.config);
+  // Only render if config exists and ship editor container exists
+  if (snapshot.config && getContainer()) {
+    render(snapshot.config);
+  }
 };
 
 export const initializeShipEditor = (): void => {
