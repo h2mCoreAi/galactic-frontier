@@ -191,19 +191,28 @@ const initialize = (): void => {
 
   window.addEventListener('hashchange', handleHashChange);
 
-  // Delay auth check to avoid immediate rate limiting
+  // Stagger API calls to avoid rate limiting
+  // Initial load should be spread out more to prevent 429 errors
   window.setTimeout(() => {
     bootstrapAuthentication().catch((error) => {
-      console.warn('[GF Dashboard] Failed to initialize authentication', error);
+      // Don't log rate limit errors on initial load
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (!errorMessage.includes('429') && !errorMessage.includes('Too Many Requests')) {
+        console.warn('[GF Dashboard] Failed to initialize authentication', error);
+      }
     });
-  }, 500);
+  }, 2000); // Increased delay
 
-  // Delay config load slightly to avoid immediate rate limiting  
+  // Delay config load even more to avoid rate limiting  
   window.setTimeout(() => {
     loadDashboardConfig().catch((error) => {
-      console.error('[GF Dashboard] Initial config load failed', error);
+      // Don't log rate limit errors on initial load - they're expected
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (!errorMessage.includes('429') && !errorMessage.includes('Too Many Requests')) {
+        console.error('[GF Dashboard] Failed to load configuration', error);
+      }
     });
-  }, 1000);
+  }, 3000); // Increased delay
 
   // Re-enabling features incrementally - TEST ONE AT A TIME
   initializeOverview();
