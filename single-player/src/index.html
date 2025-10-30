@@ -1574,6 +1574,18 @@
                     const e = enemies[j];
                     const dist = Math.hypot(p.universeX - e.universeX, p.universeY - e.universeY);
                     if (dist < e.size) {
+                        // Draw collision indicator if enabled
+                        if (window.GF_DEBUG_OVERLAYS && window.GF_DEBUG_OVERLAYS.collisions) {
+                            const screenX = e.universeX - universeX + canvas.width / 2;
+                            const screenY = e.universeY - universeY + canvas.height / 2;
+                            if (screenX >= 0 && screenX <= canvas.width && screenY >= 0 && screenY <= canvas.height) {
+                                ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+                                ctx.lineWidth = 3;
+                                ctx.beginPath();
+                                ctx.arc(screenX, screenY, e.size + 5, 0, Math.PI * 2);
+                                ctx.stroke();
+                            }
+                        }
                         // Create explosion particles instead of old explosion system
                         const explosionColor = e.type === 'small' ? '#ff6600' : e.type === 'medium' ? '#ffaa00' : '#ff4444';
                         createExplosionParticles(e.universeX, e.universeY, explosionColor, 12);
