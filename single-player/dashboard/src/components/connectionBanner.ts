@@ -78,16 +78,27 @@ export const initializeConnectionBanner = (): void => {
   };
   subscribe(subscriber);
 
-  checkBackend().catch((error) => {
-    console.warn('[GF Dashboard] Backend availability check failed', error);
-    actions.setConnectivity({ backendAvailable: false, lastChecked: new Date().toISOString() });
-  });
+  // Delay initial backend check to avoid rate limiting on startup
+  window.setTimeout(() => {
+    checkBackend().catch((error) => {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      // Don't log rate limit errors
+      if (!errorMessage.includes('429') && !errorMessage.includes('Too Many Requests')) {
+        console.warn('[GF Dashboard] Backend availability check failed', error);
+      }
+      actions.setConnectivity({ backendAvailable: false, lastChecked: new Date().toISOString() });
+    });
+  }, 4000); // Delay initial check
 
-  // Check backend health every 30 seconds
+  // Check backend health every 60 seconds (increased from 30s)
   window.setInterval(() => {
     checkBackend().catch((error) => {
-      console.warn('[GF Dashboard] Backend availability check failed', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      // Don't log rate limit errors
+      if (!errorMessage.includes('429') && !errorMessage.includes('Too Many Requests')) {
+        console.warn('[GF Dashboard] Backend availability check failed', error);
+      }
     });
-  }, 30000);
+  }, 60000); // Increased interval
 };
 

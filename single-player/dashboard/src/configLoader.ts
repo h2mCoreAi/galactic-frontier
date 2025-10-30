@@ -94,20 +94,33 @@ export const loadDashboardConfig = async (): Promise<void> => {
     isLoadingConfig = true;
     actions.setLoading(true);
     
-    // Try cache first
+    // Try cache first - use cached config if available to avoid API call
     const cached = getCachedConfig();
     if (cached) {
       try {
         validateConfig(cached);
         actions.setConfig(cached, false);
         actions.setError(null);
+        // If we have valid cached config, defer fresh fetch to avoid rate limiting
+        window.setTimeout(async () => {
+          try {
+            await fetchConfig();
+          } catch (error) {
+            // Silently fail on rate limit - we already have cached config
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            if (!errorMessage.includes('429') && !errorMessage.includes('Too Many Requests')) {
+              console.warn('[GF Dashboard] Failed to refresh config', error);
+            }
+          }
+        }, 5000); // Wait 5 seconds before refreshing
+        return; // Exit early if we have cached config
       } catch (validationError) {
         console.warn('[GF Dashboard] Cached config validation failed, fetching fresh', validationError);
         invalidateConfigCache();
       }
     }
 
-    // Always fetch fresh config to ensure sync, but use cache for instant display
+    // Only fetch fresh config if no cache available
     const config = await fetchConfig();
     try {
       validateConfig(config);

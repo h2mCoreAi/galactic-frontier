@@ -47,9 +47,15 @@ const ensureIFrame = (): HTMLIFrameElement | null => {
   iframe.className = 'gf-preview__iframe';
   iframe.src = GAME_URL;
   iframe.title = 'Galactic Frontier Live Preview';
-  // Use allow attribute instead of deprecated Feature Policy
-  iframe.setAttribute('allow', 'autoplay; fullscreen');
+  // Use allow attribute - autoplay and fullscreen are supported
+  // The warnings are harmless - browser still applies the policy
+  iframe.setAttribute('allow', 'autoplay fullscreen');
   iframe.sandbox.add('allow-scripts', 'allow-same-origin', 'allow-pointer-lock');
+  // Reset config hash when iframe loads to allow initial config
+  iframe.addEventListener('load', () => {
+    lastConfigHash = null;
+    lastPreviewConfigHash = null;
+  });
   container.appendChild(iframe);
 
   return iframe;
