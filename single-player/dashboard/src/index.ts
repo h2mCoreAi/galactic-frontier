@@ -16,6 +16,7 @@ import { initializeLivePreview } from './testing/livePreview';
 import { initializeTelemetryPanel } from './testing/telemetryPanel';
 import { initializeFPSMonitor } from './testing/fpsMonitor';
 import { initializeScenarioControls } from './testing/scenarioControls';
+import { initializeEventLogger } from './testing/eventLogger';
 import type { DashboardSubscriber, TabKey } from './types';
 // Import all CSS files from main entry point
 import './configEditor/styles.css';
@@ -225,6 +226,7 @@ const initialize = (): void => {
   initializeLivePreview();
   initializeFPSMonitor();
   initializeScenarioControls();
+  initializeEventLogger();
   
   // Real-time sync - enable last as it can cause loops if not careful
   initializeRealtimeSync();

@@ -64,6 +64,7 @@ const handleMessage = (event: MessageEvent<GameMessage>): void => {
     }
     case 'log': {
       console.log('[GF Game]', message.payload);
+      // Event logger will pick this up via console.log override
       break;
     }
     case 'error': {

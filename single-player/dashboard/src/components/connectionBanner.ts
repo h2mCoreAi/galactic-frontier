@@ -83,11 +83,11 @@ export const initializeConnectionBanner = (): void => {
     actions.setConnectivity({ backendAvailable: false, lastChecked: new Date().toISOString() });
   });
 
-  // Temporarily disabled interval to prevent crashes
-  // window.setInterval(() => {
-  //   checkBackend().catch((error) => {
-  //     console.warn('[GF Dashboard] Backend availability check failed', error);
-  //   });
-  // }, 30000);
+  // Check backend health every 30 seconds
+  window.setInterval(() => {
+    checkBackend().catch((error) => {
+      console.warn('[GF Dashboard] Backend availability check failed', error);
+    });
+  }, 30000);
 };
 
