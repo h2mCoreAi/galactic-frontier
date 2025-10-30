@@ -61,13 +61,23 @@ const ensureIFrame = (): HTMLIFrameElement | null => {
     lastConfigHash = null;
     lastPreviewConfigHash = null;
     
-    // Immediately pause if tab is hidden, before game starts drawing
+    // Immediately set pause state if tab is hidden, before game starts drawing
     if (shouldStartPaused && iframe.contentWindow) {
+      // Send pause message multiple times to ensure it's received
+      iframe.contentWindow.postMessage({ type: 'init-pause-state', payload: true }, '*');
+      iframe.contentWindow.postMessage({ type: 'toggle-pause', payload: true }, '*');
+      
+      // Send again after short delays to catch early game loop cycles
       window.setTimeout(() => {
         if (iframe.contentWindow) {
           iframe.contentWindow.postMessage({ type: 'toggle-pause', payload: true }, '*');
         }
-      }, 10);
+      }, 5);
+      window.setTimeout(() => {
+        if (iframe.contentWindow) {
+          iframe.contentWindow.postMessage({ type: 'toggle-pause', payload: true }, '*');
+        }
+      }, 50);
     }
   });
   container.appendChild(iframe);

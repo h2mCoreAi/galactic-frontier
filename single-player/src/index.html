@@ -543,20 +543,27 @@
                 } else if (type === 'toggle-pause') {
                     // Handle pause/unpause from dashboard
                     // Payload true = pause, false = resume
-                    if (payload === true || payload === 'true') {
+                    if (payload === true || payload === 'true' || payload === 1) {
                         // Pause regardless of current state (including START state)
                         if (gameState === GAME_STATES.PLAYING) {
                             gameState = GAME_STATES.PAUSED;
                         }
                         // Store pause flag to prevent drawing even in START state
                         window.GF_PREVIEW_PAUSED = true;
-                    } else if (payload === false || payload === 'false') {
+                        // Force stop any current drawing operations
+                        if (typeof stopDrawing === 'function') {
+                            stopDrawing();
+                        }
+                    } else if (payload === false || payload === 'false' || payload === 0) {
                         // Resume
                         if (gameState === GAME_STATES.PAUSED) {
                             gameState = GAME_STATES.PLAYING;
                         }
                         window.GF_PREVIEW_PAUSED = false;
                     }
+                } else if (type === 'init-pause-state') {
+                    // Initialize pause state from dashboard
+                    window.GF_PREVIEW_PAUSED = Boolean(payload);
                 } else if (type === 'toggle-overlay') {
                     // Handle debug overlay toggles
                     const { overlay, enabled } = payload;
