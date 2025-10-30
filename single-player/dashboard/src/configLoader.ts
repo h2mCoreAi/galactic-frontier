@@ -104,7 +104,14 @@ export const loadDashboardConfig = async (): Promise<void> => {
         // If we have valid cached config, defer fresh fetch to avoid rate limiting
         window.setTimeout(async () => {
           try {
-            await fetchConfig();
+            const freshConfig = await fetchConfig();
+            try {
+              validateConfig(freshConfig);
+              actions.setConfig(freshConfig, false);
+              setCachedConfig(freshConfig);
+            } catch (validationError) {
+              console.warn('[GF Dashboard] Fresh config validation failed', validationError);
+            }
           } catch (error) {
             // Silently fail on rate limit - we already have cached config
             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -112,7 +119,9 @@ export const loadDashboardConfig = async (): Promise<void> => {
               console.warn('[GF Dashboard] Failed to refresh config', error);
             }
           }
-        }, 5000); // Wait 5 seconds before refreshing
+        }, 8000); // Wait 8 seconds before refreshing to avoid rate limits
+        isLoadingConfig = false;
+        actions.setLoading(false);
         return; // Exit early if we have cached config
       } catch (validationError) {
         console.warn('[GF Dashboard] Cached config validation failed, fetching fresh', validationError);
@@ -141,8 +150,26 @@ export const loadDashboardConfig = async (): Promise<void> => {
         console.warn('[GF Dashboard] Failed to load backups', error);
       });
   } catch (error) {
-    console.error('[GF Dashboard] Failed to load configuration', error);
-    actions.setError(error instanceof Error ? error.message : 'Failed to load configuration.');
+    // Don't log rate limit errors - they're expected on initial load
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (!errorMessage.includes('429') && !errorMessage.includes('Too Many Requests')) {
+      console.error('[GF Dashboard] Failed to load configuration', error);
+      actions.setError(errorMessage);
+    } else {
+      // For rate limits, try to use cache if available, otherwise show a user-friendly message
+      const cached = getCachedConfig();
+      if (cached) {
+        try {
+          validateConfig(cached);
+          actions.setConfig(cached, false);
+          actions.setError(null);
+        } catch {
+          actions.setError('Rate limited - please wait a moment and refresh.');
+        }
+      } else {
+        actions.setError('Rate limited - please wait a moment and refresh.');
+      }
+    }
   } finally {
     actions.setLoading(false);
     isLoadingConfig = false;
