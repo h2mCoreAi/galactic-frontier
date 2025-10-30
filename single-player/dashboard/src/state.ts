@@ -7,7 +7,11 @@ import type {
   TabKey,
 } from './types';
 
-const createSnapshot = (): DashboardStateSnapshot => {
+type MutableSnapshot = {
+  -readonly [K in keyof DashboardStateSnapshot]: DashboardStateSnapshot[K];
+};
+
+const createSnapshot = (): MutableSnapshot => {
   const persisted = loadPersistedState();
 
   return {
@@ -36,7 +40,7 @@ const createSnapshot = (): DashboardStateSnapshot => {
   };
 };
 
-const snapshot: DashboardStateSnapshot = createSnapshot();
+const snapshot: MutableSnapshot = createSnapshot();
 const subscribers: DashboardSubscriber[] = [];
 
 const notifySubscribers = (): void => {

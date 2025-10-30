@@ -27,22 +27,31 @@ const render = (config: GalacticFrontierConfig | null): void => {
       ${numberInput('ship-thrust', 'Thrust', ship.thrust, 0.01, 'Acceleration per frame. Higher reaches top speed quicker.')}
       ${numberInput('ship-size', 'Size', ship.size, 0.01, 'Effective collision radius. Larger = easier to hit.')}
       ${numberInput('ship-maxHealth', 'Max Health', ship.maxHealth, 0.01, 'Total hit points before game over.')}
-      ${numberInput('ship-afterburnerBoost', 'Afterburner Boost (x)', ship.afterburnerBoost, 0.01, 'Speed multiplier while boosting.')}
+      ${numberInput('ship-afterburnerBoost', 'Afterburner Boost (x)', ship.afterburnerBoost ?? 0, 0.01, 'Speed multiplier while boosting.')}
       ${numberInput('ship-afterburnerMax', 'Afterburner Max', ship.afterburnerMax, 0.01, 'Maximum afterburner energy capacity.')}
       ${numberInput('ship-afterburnerDepleteRate', 'Afterburner Deplete Rate', ship.afterburnerDepleteRate, 0.01, 'Energy consumed per frame when boosting.')}
       ${numberInput('ship-afterburnerRegenRate', 'Afterburner Regen Rate', ship.afterburnerRegenRate, 0.01, 'Energy recovered per frame when not boosting.')}
     </div>
   `;
 
-  const onChange = (id: string, path: (cfg: GalacticFrontierConfig) => number, set: (cfg: GalacticFrontierConfig, v: number) => void) => {
+  type MutableConfig = {
+    -readonly [K in keyof GalacticFrontierConfig]: GalacticFrontierConfig[K] extends readonly (infer U)[]
+      ? U[]
+      : GalacticFrontierConfig[K] extends object
+      ? { -readonly [P in keyof GalacticFrontierConfig[K]]: GalacticFrontierConfig[K][P] }
+      : GalacticFrontierConfig[K];
+  };
+
+  const onChange = (id: string, path: (cfg: GalacticFrontierConfig) => number | undefined, set: (cfg: MutableConfig, v: number) => void) => {
     const el = document.getElementById(id) as HTMLInputElement | null;
     if (!el) return;
     el.addEventListener('change', () => {
       const raw = Number(el.value);
       if (!Number.isFinite(raw)) return;
-      const next: GalacticFrontierConfig = JSON.parse(JSON.stringify(dashboardState.config));
+      if (!dashboardState.config) return;
+      const next = JSON.parse(JSON.stringify(dashboardState.config)) as MutableConfig;
       set(next, raw);
-      actions.setConfig(next);
+      actions.setConfig(next as GalacticFrontierConfig);
     });
   };
 
@@ -50,7 +59,7 @@ const render = (config: GalacticFrontierConfig | null): void => {
   onChange('ship-thrust', (c) => c.ship.thrust, (c, v) => { c.ship.thrust = v; });
   onChange('ship-size', (c) => c.ship.size, (c, v) => { c.ship.size = v; });
   onChange('ship-maxHealth', (c) => c.ship.maxHealth, (c, v) => { c.ship.maxHealth = v; });
-  onChange('ship-afterburnerBoost', (c) => c.ship.afterburnerBoost, (c, v) => { c.ship.afterburnerBoost = v; });
+  onChange('ship-afterburnerBoost', (c) => c.ship.afterburnerBoost ?? 0, (c, v) => { c.ship.afterburnerBoost = v; });
   onChange('ship-afterburnerMax', (c) => c.ship.afterburnerMax, (c, v) => { c.ship.afterburnerMax = v; });
   onChange('ship-afterburnerDepleteRate', (c) => c.ship.afterburnerDepleteRate, (c, v) => { c.ship.afterburnerDepleteRate = v; });
   onChange('ship-afterburnerRegenRate', (c) => c.ship.afterburnerRegenRate, (c, v) => { c.ship.afterburnerRegenRate = v; });

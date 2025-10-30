@@ -18,6 +18,7 @@
       <button id="themeToggle" type="button" class="gf-button">Toggle Theme</button>
       <button id="refreshConfig" type="button" class="gf-button">Reload Config</button>
       <button id="saveConfig" type="button" class="gf-button gf-button--primary">Save Changes</button>
+      <button id="deployConfig" type="button" class="gf-button gf-button--secondary">Deploy to Game</button>
     </div>
   </header>
   <div class="gf-app">
@@ -52,6 +53,7 @@
       </section>
       <section id="configTab" class="gf-tab" aria-labelledby="configNav" hidden>
         <h2>Configuration Editor</h2>
+        <div id="configProgressIndicator"></div>
         <div id="configEditor" class="gf-config"></div>
       </section>
       <section id="testingTab" class="gf-tab" aria-labelledby="testingNav" hidden>

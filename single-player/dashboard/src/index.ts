@@ -8,6 +8,7 @@ import { initializeBreadcrumbs } from './components/breadcrumbs';
 import { initializeSettings } from './components/settings';
 import { initializeAutoRefresh } from './components/autoRefresh';
 import { initializeConnectionBanner } from './components/connectionBanner';
+import { initializeProgressIndicator } from './components/progressIndicator';
 import { initializeLivePreview } from './testing/livePreview';
 import { initializeTelemetryPanel } from './testing/telemetryPanel';
 import { initializeSpawnControls } from './testing/spawnControls';
@@ -193,6 +194,7 @@ const initialize = (): void => {
   initializeSettings();
   initializeAutoRefresh();
   initializeConnectionBanner();
+  initializeProgressIndicator();
   initializeLivePreview();
   initializeTelemetryPanel();
   initializeSpawnControls();

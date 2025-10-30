@@ -36,6 +36,7 @@ const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS) || 12;
 const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000;
 const RATE_LIMIT_MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100;
 const CONFIG_PATH = path.join(__dirname, 'config', 'config.json');
+const GAME_CONFIG_PATH = path.join(__dirname, 'single-player', 'src', 'public', 'config', 'config.json');
 const RAW_CORS = process.env.CORS_ORIGINS || process.env.CORS_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:5174';
 const CORS_ALLOWLIST = RAW_CORS.split(',').map(s => s.trim()).filter(Boolean);
 const CONFIG_BACKUP_DIR = process.env.CONFIG_BACKUP_DIR || path.join(__dirname, 'config', 'backups');
@@ -133,6 +134,13 @@ const readConfigFile = async () => {
 const writeConfigFile = async (config) => {
   await ensureDirectory(path.dirname(CONFIG_PATH));
   await fsPromises.writeFile(CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`);
+};
+
+const deployConfigToGame = async () => {
+  const config = await readConfigFile();
+  await ensureDirectory(path.dirname(GAME_CONFIG_PATH));
+  await fsPromises.writeFile(GAME_CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`);
+  logger.info('Configuration deployed to game directory', { path: GAME_CONFIG_PATH });
 };
 
 const getBackupPath = (backupId) => path.join(CONFIG_BACKUP_DIR, `${backupId}.json`);
@@ -651,6 +659,17 @@ app.post('/api/config/backups/:backupId/restore', verifyToken, async (req, res) 
   } catch (error) {
     logger.error('Error restoring config backup:', error);
     res.status(500).json({ error: 'Failed to restore configuration backup' });
+  }
+});
+
+app.post('/api/config/deploy', verifyToken, async (req, res) => {
+  try {
+    await deployConfigToGame();
+    logger.info('Configuration deployed to game directory', { userId: req.user?.userId || 'dev' });
+    res.json({ success: true, message: 'Configuration deployed to game directory' });
+  } catch (error) {
+    logger.error('Error deploying configuration:', error);
+    res.status(500).json({ error: 'Failed to deploy configuration to game directory' });
   }
 });
 
