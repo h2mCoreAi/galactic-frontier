@@ -3,7 +3,7 @@ import { showToast } from '../toast';
 const containerId = 'debugControls';
 const iframeId = 'gamePreviewFrame';
 
-type DebugOverlayType = 'hitboxes' | 'paths' | 'collisions' | 'velocity' | 'spawn-zones';
+type DebugOverlayType = 'hitboxes' | 'paths' | 'collisions' | 'velocity' | 'spawnZones';
 
 interface DebugOverlayState {
   readonly hitboxes: boolean;
@@ -167,7 +167,7 @@ const renderControls = (): void => {
   pathsCheck?.addEventListener('change', () => toggleOverlay('paths'));
   collisionsCheck?.addEventListener('change', () => toggleOverlay('collisions'));
   velocityCheck?.addEventListener('change', () => toggleOverlay('velocity'));
-  spawnZonesCheck?.addEventListener('change', () => toggleOverlay('spawn-zones'));
+  spawnZonesCheck?.addEventListener('change', () => toggleOverlay('spawnZones'));
   allBtn?.addEventListener('click', () => setAllOverlays(!allEnabled));
 };
 
