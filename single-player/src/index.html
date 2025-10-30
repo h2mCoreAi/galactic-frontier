@@ -520,6 +520,15 @@
         window.GF_PREVIEW = window.self !== window.top;
         if (window.GF_PREVIEW) {
             document.body.classList.add('preview-mode');
+            // Initialize debug overlays object
+            window.GF_DEBUG_OVERLAYS = {
+                hitboxes: false,
+                paths: false,
+                collisions: false,
+                velocity: false,
+                spawnZones: false
+            };
+            
             window.addEventListener('message', (event) => {
                 if (!event.data || typeof event.data !== 'object') return;
                 const { type, payload } = event.data;
@@ -527,6 +536,17 @@
                     applyIncomingConfig(payload);
                 } else if (type === 'spawn-enemy') {
                     spawnEnemy();
+                } else if (type === 'toggle-overlay') {
+                    // Handle debug overlay toggles
+                    const { overlay, enabled } = payload;
+                    if (window.GF_DEBUG_OVERLAYS && overlay) {
+                        window.GF_DEBUG_OVERLAYS[overlay] = enabled;
+                    }
+                } else if (type === 'set-overlays') {
+                    // Set all overlay states at once
+                    if (payload) {
+                        window.GF_DEBUG_OVERLAYS = { ...window.GF_DEBUG_OVERLAYS, ...payload };
+                    }
                 }
             });
         }
@@ -2288,6 +2308,26 @@
                 ctx.closePath();
                 ctx.fillStyle = 'white';
                 ctx.fill();
+                
+                // Draw ship hitbox overlay if enabled
+                if (window.GF_DEBUG_OVERLAYS && window.GF_DEBUG_OVERLAYS.hitboxes) {
+                    ctx.strokeStyle = 'rgba(0, 255, 0, 0.5)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, ship.size, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                
+                // Draw ship velocity vector if enabled
+                if (window.GF_DEBUG_OVERLAYS && window.GF_DEBUG_OVERLAYS.velocity) {
+                    ctx.strokeStyle = 'rgba(255, 255, 0, 0.6)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(ship.vx * 10, ship.vy * 10);
+                    ctx.stroke();
+                }
+                
                 ctx.restore();
 
                 // Fan-shot active visual effect: pulsing ring + rotating orbs
